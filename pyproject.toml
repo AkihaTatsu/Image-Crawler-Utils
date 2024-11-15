@@ -1,0 +1,46 @@
+[project] 
+name = "image-crawler-utils"
+authors = [
+    {name = "AkihaTatsu", email = "akihareinhardt@yeah.net"},
+]
+version = "0.0.1"
+description = """
+
+    A rather customizable image crawler structure, designed to download images with their information using multi-threading method.
+
+    Besides, several wheels have been implemented to help better build a custom image crawler for yourself.
+
+"""
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "beautifulsoup4",
+    "colorama",
+    "dill",
+    "ipython",
+    "lxml",
+    "nodriver",
+    "pathvalidate",
+    "Requests",
+    "tqdm",
+    "websockets<=13.1",
+]
+
+[project.urls]
+Source = "https://github.com/AkihaTatsu/image-crawler-utils"
+Tracker = "https://github.com/AkihaTatsu/image-crawler-utils/issues"
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+    "image_crawler_utils",
+    "image_crawler_utils.classes",
+    "image_crawler_utils.image_downloader",
+    "image_crawler_utils.stations.booru",
+    "image_crawler_utils.stations.pixiv",
+    "image_crawler_utils.stations.twitter",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
