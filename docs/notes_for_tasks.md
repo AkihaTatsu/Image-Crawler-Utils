@@ -1838,7 +1838,6 @@ If you set `quick_mode` to `True` in PixivUserParser, then the result is like:
         "id": "60066082",
         "width": 2067,
         "height": 1124
-        }
     },
     "backup_urls": []
 }

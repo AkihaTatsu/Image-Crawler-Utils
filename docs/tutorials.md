@@ -52,7 +52,7 @@ crawler_settings = CrawlerSettings(
     max_download_time: float | None=None,
     retry_times: int=5,
     overwrite_images: bool=True,
-    # Configs define which type of messages are shown on the console.
+    # Configs define which types of messages are shown on the console.
     debug_config=DebugConfig.level("info"),
     # Extra configs for custom use
     extra_configs={

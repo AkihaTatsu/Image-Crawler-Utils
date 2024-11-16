@@ -58,7 +58,7 @@ class CrawlerSettings:
         Parameters:
             capacity_count_config (image_crawler_utils.config.CapacityCountConfig, optional): Contains configs that restricts downloading numbers and capacity.
             download_config (image_crawler_utils.config.DownloadConfig, optional): Contains configs about parameters in downloading.
-            debug_config (image_crawler_utils.config.DebugConfig, optional): Contains configs that define which type of messages are shown on the console.
+            debug_config (image_crawler_utils.config.DebugConfig, optional): Contains configs that define which types of messages are shown on the console.
 
             image_num (int, optional): Number of images to be parsed / downloaded in total; None means no restriction.
             capacity (float, optional): Total size of images (MB); None means no restriction.
@@ -347,7 +347,7 @@ class CrawlerSettings:
         Parameters:
             capacity_count_config (image_crawler_utils.config.CapacityCountConfig, optional): Contains configs that restricts downloading numbers and capacity.
             download_config (image_crawler_utils.config.DownloadConfig, optional): Contains configs about parameters in downloading.
-            debug_config (image_crawler_utils.config.DebugConfig, optional): Contains configs that define which type of messages are shown on the console.
+            debug_config (image_crawler_utils.config.DebugConfig, optional): Contains configs that define which types of messages are shown on the console.
 
             image_num (int, optional): Number of images to be parsed / downloaded in total; None means no restriction.
             capacity (float, optional): Total size of images (MB); None means no restriction.

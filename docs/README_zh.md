@@ -20,7 +20,12 @@ Image Crawler Utils
 
 ## 安装
 
-【TBD】
+建议通过以下命令安装：
+
+```Default
+pip install -i https://test.pypi.org/simple/ image-crawler-utils
+```
+
 + 需要`Python >= 3.9`环境。
 
 ### 注意！
@@ -58,7 +63,7 @@ Image Crawler Utils
 
 Image Crawler Utils提供了三个相互独立的模块以构建图片爬取程序：
 
-+ **爬取程序设置（CrawlerSettings）：** 有关下载和调试爬取程序的基本配置。除站点链接（station_url）之外的每个参数均为可选项，并将在留空的情况下使用默认值（参见[教程](tutorials_zh.md)）。一个完整的爬取程序设置如下所示：
++ **爬取程序设置（CrawlerSettings）：** 有关下载和调试爬取程序的基本配置。除站点链接（station_url）之外的每个参数均为可选项，并将在留空的情况下使用默认值（参见[教程](tutorials_zh.md)）。一个完整的爬取程序设置参数列表如下所示：
 
 ```Python
 from image_crawler_utils import CrawlerSettings
@@ -116,7 +121,7 @@ parser = DanbooruKeywordParser(
 image_info_list = parser.run()
 ```
 
-+ **下载器（Downloader）：** 下载使用image_filter参数筛选过后的、由解析器生成的图片列表。一个能正确运行的下载器应当遵循如下形式：
++ **下载器（Downloader）：** 下载使用image_filter参数筛选过后的、由解析器生成的图片列表。一个完整的下载器参数列表如下所示：
 
 ```Python
 from image_crawler_utils import Downloader
