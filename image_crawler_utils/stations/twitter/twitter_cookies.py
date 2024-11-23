@@ -70,7 +70,12 @@ async def __get_twitter_cookies(
             pbar.update()
             pbar.set_description(f"Trying to login...")
 
-            await tab.find('button[data-testid="SideNav_AccountSwitcher_Button"]', timeout=600)
+            while True:  # As long as no successful loggin in, continue this loop
+                try:
+                    await tab.find('button[data-testid="SideNav_AccountSwitcher_Button"]', timeout=1)
+                    break
+                except:
+                    continue
             
             pbar.update()
             pbar.set_description(f"Parsing cookies...")

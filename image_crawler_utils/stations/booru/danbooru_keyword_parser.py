@@ -339,7 +339,7 @@ class DanbooruKeywordParser(KeywordParser):
                         break
                     # Successfully parsed
                     else:
-                        image_name = f'Danbooru {new_info["info"]["id"]} {" ".join(new_info["tags"])} {image_name}' + (f'.{new_info["info"]["file_ext"]}' if '.' not in image_name else '')
+                        image_name = f'Danbooru {new_info["info"]["id"]} {image_name}' + (f'.{new_info["info"]["file_ext"]}' if '.' not in image_name else '')
                         image_info_list.append(ImageInfo(
                             url=download_url,
                             backup_urls=[backup_url] if backup_url is not None else [],

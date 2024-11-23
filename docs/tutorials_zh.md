@@ -438,7 +438,7 @@ cookies = get_pixiv_cookies(
 + `password`：账号的密码。留空以手动输入。
 + `proxies`：打开登录界面的代理。使用的格式与[DownloadConfig](#downloadconfig)中的格式相同。
 
-`get_pixiv_cookies()`使用浏览器生成一个页面以完成登录。在此情况下，你需要在10分钟内完成登录操作，包括可能的reCAPTCHA检查，邮件确认，等等。
+`get_pixiv_cookies()`使用浏览器生成一个页面以完成登录。如果需要进行确认（如reCAPTCHA检查，邮件确认等），你必须手动完成此步骤。
 
 #### Cookies()类
 

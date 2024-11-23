@@ -303,7 +303,7 @@ class SafebooruKeywordParser(KeywordParser):
                         self.crawler_settings.log.error(f"Cannot parse image info for image ID: {info['id']}!")
                     # Successfully parsed
                     else:
-                        image_name = f'Safebooru {new_info["info"]["id"]} {" ".join(new_info["tags"])} {image_name}'
+                        image_name = f'Safebooru {new_info["info"]["id"]} {image_name}'
                         image_info_list.append(ImageInfo(
                             url=download_url,
                             backup_urls=[backup_url] if backup_url is not None else [],

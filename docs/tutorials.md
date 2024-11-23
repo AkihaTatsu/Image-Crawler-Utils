@@ -441,7 +441,7 @@ cookies = get_pixiv_cookies(
 + `password`: Your password for Pixiv account. Leave it blank to input manually.
 + `proxies`: Proxies to use when opening the logging-in webpage. It uses the same form as the one in [DownloadConfig](#downloadconfig).
 
-`get_pixiv_cookies()` uses a browser to generate a browser window to log in. In this case, you need to finish the logging in process in 10 minutes, including some reCAPTCHA check, mail confirmation, etc.
+`get_pixiv_cookies()` uses a browser to generate a browser window to log in. If some confirmation process (e.g. reCAPTCHA check, mail confirmation, etc.) is required, you need to finish it manually.
 
 #### Cookies() class
 
