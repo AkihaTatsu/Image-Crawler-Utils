@@ -93,15 +93,15 @@ Attributes of CrawlerSettings include (asterisk mark \* means its information ca
 
 ### ImageInfo
 
-Please refer to [tutorials#The list of ImageInfo()](tutorials.md#the-list-of-imageurlnameinfo) for detailed information.
+Please refer to [tutorials#The list of ImageInfo()](tutorials.md#the-list-of-imageinfo) for detailed information.
 
 ### save_image_infos()
 
-Please refer to [tutorials#The list of ImageInfo()](tutorials.md#the-list-of-imageurlnameinfo) for detailed information.
+Please refer to [tutorials#The list of ImageInfo()](tutorials.md#the-list-of-imageinfo) for detailed information.
 
 ### load_image_infos()
 
-Please refer to [tutorials#The list of ImageInfo()](tutorials.md#the-list-of-imageurlnameinfo) for detailed information.
+Please refer to [tutorials#The list of ImageInfo()](tutorials.md#the-list-of-imageinfo) for detailed information.
 
 ### Parser
 
