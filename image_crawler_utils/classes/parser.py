@@ -15,9 +15,9 @@ from concurrent import futures
 import nodriver
 
 from image_crawler_utils import Cookies
-from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, keyword_list_tree, construct_keyword_tree, build_standard_keyword_str
+from image_crawler_utils.keyword import KeywordLogicTree, construct_keyword_tree
 from image_crawler_utils.log import print_logging_msg, Log
-from image_crawler_utils.utils import custom_tqdm, check_dir, set_up_nodriver_browser
+from image_crawler_utils.utils import custom_tqdm, check_dir, Empty, set_up_nodriver_browser
 
 from .crawler_settings import CrawlerSettings
 from .image_info import ImageInfo
@@ -77,7 +77,7 @@ class Parser(ABC):
         Dataclasses will be displayed in a neater way.
         """
 
-        print_logging_msg("debug", "========== Current Parser Config ==========")
+        print_logging_msg("========== Current Parser Config ==========", "debug")
 
         # Basic info
         try:
@@ -89,7 +89,7 @@ class Parser(ABC):
                 print(f"  - Cookies:")
                 pprint(self.cookies.cookies_selenium)
         except Exception as e:
-            print_logging_msg("error", f"Basic Info missing because {e}!\n{traceback.format_exc()}")
+            print_logging_msg(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
 
         # Other info
         if set(self.__init__.__code__.co_varnames) != set(KeywordParser.__init__.__code__.co_varnames):
@@ -100,11 +100,11 @@ class Parser(ABC):
                     print(f"  - {varname}: {getattr(self, varname)}")
 
         print('')
-        print_logging_msg("debug", "CrawlerSettings used:")
+        print_logging_msg("CrawlerSettings used:", "debug")
         self.crawler_settings.display_all_configs()
             
         print('')
-        print_logging_msg("debug", "========== Parser Config Ending ==========")
+        print_logging_msg("========== Parser Config Ending ==========", "debug")
 
 
     def save_to_pkl(
@@ -169,7 +169,7 @@ class Parser(ABC):
         self, 
         url: str, 
         session=requests.Session(),
-        headers: Optional[Union[dict, Callable]]=None,
+        headers: Optional[Union[dict, Callable]]=Empty(),
         thread_delay: Union[None, float, Callable]=None,
     ) -> str:
         """
@@ -187,7 +187,7 @@ class Parser(ABC):
 
         self.crawler_settings.log.debug(f'Try connecting to \"{url}\"')
         if thread_delay is None:
-            real_thread_delay = self.crawler_settings.download_config.randomized_thread_delay
+            real_thread_delay = self.crawler_settings.download_config.result_thread_delay
         else:
             real_thread_delay = thread_delay() if callable(thread_delay) else thread_delay
         time.sleep(real_thread_delay)
@@ -196,10 +196,10 @@ class Parser(ABC):
             try:
                 download_time = self.crawler_settings.download_config.max_download_time
 
-                if headers is not None:
-                    request_headers = headers() if callable(headers) else headers
-                else:
+                if isinstance(headers, Empty):
                     request_headers = self.crawler_settings.download_config.result_headers
+                else:
+                    request_headers = headers() if callable(headers) else headers
 
                 response = session.get(
                     url,
@@ -223,7 +223,7 @@ class Parser(ABC):
             except Exception as e:
                 self.crawler_settings.log.warning(f"Connecting to \"{url}\" at attempt {i + 1} FAILED because {e} Retry connecting.\n{traceback.format_exc()}",
                                  output_msg=f"Connecting to \"{url}\" at attempt {i + 1} FAILED.")
-                time.sleep(self.crawler_settings.download_config.randomized_fail_delay)
+                time.sleep(self.crawler_settings.download_config.result_fail_delay)
 
         self.crawler_settings.log.error(f'FAILED to connect to \"{url}\"')
         return None
@@ -235,7 +235,7 @@ class Parser(ABC):
         url: str, 
         thread_id: int,
         session=requests.Session(),
-        headers: Optional[Union[dict, Callable]]=None,
+        headers: Optional[Union[dict, Callable]]=Empty(),
         thread_delay: Union[None, float, Callable]=None,
     ):
         """
@@ -256,11 +256,11 @@ class Parser(ABC):
         url_list: Iterable[str], 
         restriction_num: Optional[int]=None, 
         session=requests.Session(),
-        headers: Optional[Union[dict, Callable, Iterable]]=None,
+        headers: Optional[Union[dict, Callable, Iterable]]=Empty(),
         thread_delay: Union[None, float, Callable]=None,
         batch_num: Optional[int]=None,
         batch_delay: Union[float, Callable]=0.0,
-    ) -> list:
+    ) -> list[str]:
         """
         Download multiple web page content using threading.
 
@@ -268,7 +268,7 @@ class Parser(ABC):
             url_list (list[str]): The list of URLs of the page to download.
             restriction_num (int, optional): Only download the first restriction_num number of pages. Set to None (default) meaning no restrictions.
             session (requests from import requests, or requests.Session): Can be requests or requests.Session()
-            headers (dict or function, optional): If you need to specify headers for current threading requests, use this argument. Set to None (default) meaning use the headers from self.crawler_settings.download_config.result_headers
+            headers (dict, list or function, optional): If you need to specify headers for current threading requests, use this argument. Set to None (default) meaning use the headers from self.crawler_settings.download_config.result_headers
                 - If it is a list, it should be of the same length as url_list, and for url_list[i] it will use the headers in headers[i]. The element in this list can be a dict of a function.
             thread_delay (float or function, optional): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
             batch_num: Number of pages for each batch; using it with batch_delay to wait a certain period of time after downloading each batch. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
@@ -282,12 +282,12 @@ class Parser(ABC):
         if restriction_num is not None:
             page_num = min(page_num, restriction_num)
         l_url_list = list(url_list)
-        if headers is None:
+        if isinstance(headers, Empty):
             headers = self.crawler_settings.download_config.result_headers
         elif isinstance(headers, Iterable) and not isinstance(headers, dict):
             if len(headers) != len(url_list):
-                self.crawler_settings.log.critical(f"Number or headers ({len(url_list)}) should be of the same length as number of URLs ({len(headers)})")
-                raise ValueError(f"Number or headers ({len(url_list)}) should be of the same length as number of URLs ({len(headers)})")
+                self.crawler_settings.log.critical(f"The number of headers ({len(url_list)}) should be of the same length as the number of URLs ({len(headers)})")
+                raise ValueError(f"The number of headers ({len(url_list)}) should be of the same length as the number of URLs ({len(headers)})")
             l_headers = list(headers)
 
         page_content_dict_with_thread_id = {}
@@ -358,6 +358,7 @@ class Parser(ABC):
         url: Optional[str]=None, 
         headless: bool=False,
         timeout: float=60,
+        save_cookies_file: Optional[str]=None,
     ):        
         test_url = url if url is not None else self.station_url
         self.crawler_settings.log.info(f"Loading browser to get Cloudflare cookies from {test_url}.")
@@ -414,6 +415,9 @@ class Parser(ABC):
             cookies_nodriver = await browser.cookies.get_all()
             self.cookies = Cookies.create_by(cookies_nodriver)
             self.crawler_settings.log.info("Cookies have been replaced. You can use Parser.cookies to extract it. ATTENTION: The cookies only work with certain user agent and IP address in a certain time.")
+
+            if save_cookies_file is not None:
+                self.cookies.save_to_json(save_cookies_file)
             
             browser.stop()
         except Exception as e:
@@ -426,6 +430,7 @@ class Parser(ABC):
         url: Optional[str]=None, 
         headless: bool=False,
         timeout: float=60,
+        save_cookies_file: Optional[str]=None,
     ):
         """
         Bypass Cloudflare check and get its cookies.
@@ -441,6 +446,7 @@ class Parser(ABC):
                 url=url,
                 headless=headless,
                 timeout=timeout,
+                save_cookies_file=save_cookies_file,
             )
         )
 
@@ -514,7 +520,7 @@ class KeywordParser(Parser):
         Dataclasses will be displayed in a neater way.
         """
         
-        print_logging_msg("debug", "========== Current KeywordParser Config ==========")
+        print_logging_msg("========== Current KeywordParser Config ==========", "debug")
 
         # Basic info
         print('\nBasic Info:')
@@ -529,7 +535,7 @@ class KeywordParser(Parser):
                 print(f"  - Cookies:")
                 pprint(self.cookies.cookies_selenium)
         except Exception as e:
-            print_logging_msg("error", f"Basic Info missing because {e}!\n{traceback.format_exc()}")
+            print_logging_msg(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
 
         # Other info
         if set(self.__init__.__code__.co_varnames) != set(KeywordParser.__init__.__code__.co_varnames):
@@ -540,11 +546,11 @@ class KeywordParser(Parser):
                     print(f"  - {varname}: {getattr(self, varname)}")
 
         print('')
-        print_logging_msg("debug", "CrawlerSettings used:")
+        print_logging_msg("CrawlerSettings used:", "debug")
         self.crawler_settings.display_all_configs()
             
         print('')
-        print_logging_msg("debug", "========== Keyword Parser Config Ending ==========")
+        print_logging_msg("========== Keyword Parser Config Ending ==========", "debug")
 
 
     # Generate standard keyword string
@@ -565,9 +571,4 @@ class KeywordParser(Parser):
         
         # Standard keyword string            
         kw_tree = self.keyword_tree if keyword_tree is None else keyword_tree
-        self.standard_keyword_string = build_standard_keyword_str(kw_tree)
-
-        # Standard keyword-include string
-        keyword_group = min_len_keyword_group(kw_tree.keyword_include_group_list())
-        self.standard_keyword_string = [build_standard_keyword_str(keyword_list_tree(group, log=self.crawler_settings.log)) 
-                                                for group in keyword_group][0]
+        self.standard_keyword_string = kw_tree.standard_keyword_string()

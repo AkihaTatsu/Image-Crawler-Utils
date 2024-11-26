@@ -17,6 +17,17 @@ from image_crawler_utils.log import Log
 
 
 
+##### Empty class
+
+
+class Empty:
+    """
+    An empty placeholder class, mainly for checking if a parameter is used.
+    """
+
+    pass
+
+
 ##### Customized tqdm bars
 
 
@@ -35,7 +46,7 @@ custom_tqdm = notebook if _is_ipython_kernel() else tqdm
 
 def check_dir(dir_path: str, log: Log=Log()) -> None:
     """
-    Create the directory when not exists.
+    Create the directory when not existing.
     Raise an error when failed.
 
     Parameters:
@@ -238,8 +249,8 @@ async def set_up_nodriver_browser(
 def suppress_print():
     """
     Use this function like:
-        with suppress_print():
-            # some operation
+    >>> with suppress_print():
+    >>>     # suppressed print()
     """
 
     def silent_print(*args, **kwargs):

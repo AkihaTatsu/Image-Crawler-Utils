@@ -19,13 +19,13 @@ class Cookies:
     """
     Convert format of cookies between selenium, requests and string.
     Use .create_by() to input cookies.
-    Use .cookies_selenium / .cookies_dict / .cookies_string to get the cookies of suitable format.
+    Use .cookies_nodriver / .cookies_selenium / .cookies_dict / .cookies_string to get the cookies of suitable format.
     """
 
     cookies_nodriver: Optional[list[nodriver.cdp.network.Cookie]] = None
-    cookies_selenium: Optional[list[dict]] = None
-    cookies_dict: Optional[dict] = None
-    cookies_string: Optional[str] = None
+    cookies_selenium: Optional[list[dict]] = dataclasses.field(default_factory=lambda: [])
+    cookies_dict: Optional[dict] = dataclasses.field(default_factory=lambda: {})
+    cookies_string: Optional[str] = ''
     
 
     def __add__(self, other: Cookies):
@@ -325,9 +325,9 @@ class Cookies:
             A bool, telling whethers Cookies is None.
         """
         return (self.cookies_nodriver is None
-                and self.cookies_selenium is None 
-                and self.cookies_dict is None 
-                and self.cookies_string is None)
+                and len(self.cookies_selenium) == 0 
+                and len(self.cookies_dict) == 0 
+                and len(self.cookies_string) == 0)
 
 
 ##### nodriver currently has bugs when setting cookies, so I will set it manually

@@ -58,32 +58,32 @@ class PixivSearchSettings:
         self.ending_date = self.ending_date.lower()
 
         if not self.target_illust and not self.target_manga and not self.target_ugoira:
-            print_logging_msg("warning", f'There must be at least one target of searching. Set to the default of searching all.')
+            print_logging_msg(f'There must be at least one target of searching. Set to the default of searching all.', 'warning')
             self.target_illust = True
             self.target_manga = True
             self.target_ugoira = True
         elif (self.target_manga and self.target_illust and not self.target_ugoira) or (self.target_manga and self.target_ugoira and not self.target_illust):
-            print_logging_msg("warning", f'You cannot search only one of illustrations and ugoira (animations) with manga at the same time. Set to the default of searching all.')
+            print_logging_msg(f'You cannot search only one of illustrations and ugoira (animations) with manga at the same time. Set to the default of searching all.', 'warning')
             self.target_illust = True
             self.target_manga = True
             self.target_ugoira = True
 
         if self.age_rating not in ["all", "safe", "r18"]:
-            print_logging_msg("warning", f'{self.order} is not one of {str(["all", "safe", "r18"])}! It will be set to default ("all").')
+            print_logging_msg(f'{self.order} is not one of {str(["all", "safe", "r18"])}! It will be set to default ("all").', 'warning')
             self.tags_match_type = "all"
 
         if self.order not in ["newest", "oldest"]:
-            print_logging_msg("warning", f'{self.order} is not one of {str(["newest", "oldest"])}! It will be set to default ("newest").')
+            print_logging_msg(f'{self.order} is not one of {str(["newest", "oldest"])}! It will be set to default ("newest").', 'warning')
             self.tags_match_type = "newest"
 
         if self.tags_match_type not in ["partial", "perfect", "title_caption"]:
-            print_logging_msg("warning", f'{self.order} is not one of {str(["partial", "perfect", "title_caption"])}! It will be set to default ("partial").')
+            print_logging_msg(f'{self.order} is not one of {str(["partial", "perfect", "title_caption"])}! It will be set to default ("partial").', 'warning')
             self.tags_match_type = "partial"
 
         if self.creation_tool not in [
             'all', 'sai', 'photoshop', 'clip studio paint', 'illuststudio', 'comicstudio', 'pixia', 'azpainter2', 'painter', 'illustrator', 'gimp', 'firealpaca', 'oekaki bbs', 'azpainter', 'cgillust', 'oekaki chat', 'tegaki blog', 'ms_paint', 'pictbear', 'opencanvas', 'paintshoppro', 'edge', 'drawr', 'comicworks', 'azdrawing', 'sketchbookpro', 'photostudio', 'paintgraphic', 'medibang paint', 'nekopaint', 'inkscape', 'artrage', 'azdrawing2', 'fireworks', 'ibispaint', 'aftereffects', 'mdiapp', 'graphicsgale', 'krita', 'kokuban.in', 'retas studio', 'e-mote', '4thpaint', 'comilabo', 'pixiv sketch', 'pixelmator', 'procreate', 'expression', 'picturepublisher', 'processing', 'live2d', 'dotpict', 'aseprite', 'pastela', 'poser', 'metasequoia', 'blender', 'shade', '3dsmax', 'daz studio', 'zbrush', 'comi po!', 'maya', 'lightwave3d', 'hexagon king', 'vue', 'sketchup', 'cinema4d', 'xsi', 'carrara', 'bryce', 'strata', 'sculptris', 'modo', 'animationmaster', 'vistapro', 'sunny3d', '3d-coat', 'paint 3d', 'vroid studio', 'mechanical pencil', 'pencil', 'ballpoint pen', 'thin marker', 'colored pencil', 'copic marker', 'dip pen', 'watercolors', 'brush', 'calligraphy pen', 'felt-tip pen', 'magic marker', 'watercolor brush', 'paint', 'acrylic paint', 'fountain pen', 'pastels', 'airbrush', 'color ink', 'crayon', 'oil paint', 'coupy pencil', 'gansai', 'pastel crayons',
         ]:
-            print_logging_msg("warning", f'{self.order} is not one of available creation tools! It will be set to default ("all").')
+            print_logging_msg(f'{self.order} is not one of available creation tools! It will be set to default ("all").', 'warning')
             self.creation_tool = "all"
 
         def time_format(s):
@@ -95,7 +95,7 @@ class PixivSearchSettings:
                 time.strptime(new_s, "%Y-%m-%d")
                 return new_s
             except:
-                print_logging_msg("warning", f'{s} is not a valid "year-month-date" format! It will be ignored.')
+                print_logging_msg(f'{s} is not a valid "year-month-date" format! It will be ignored.', 'warning')
                 return ''
         self.starting_date = time_format(self.starting_date)
         self.ending_date = time_format(self.ending_date)

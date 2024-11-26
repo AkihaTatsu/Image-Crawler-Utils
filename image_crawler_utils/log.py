@@ -15,19 +15,20 @@ from image_crawler_utils.configs import DebugConfig
 
 
 def print_logging_msg(
-        level: str, 
         msg: str,
-        debug_config: DebugConfig=DebugConfig(
-            show_debug=True,
-            show_info=True,
-            show_warning=True,
-            show_error=True,
-            show_critical=True,
-        ), 
+        level: str='',
+        debug_config: DebugConfig=DebugConfig.level("debug"),
     ):
     """
     Print time and message according to its logging level.
     If debug_config is used and the logging level is not allowed to show, the message will not be output.
+    
+    Parameters:
+        level (str): Level of messages.
+            - Should be one of "debug", "info", "warning", "error", "critical".
+            - Set it to other string or leave it blank will always output msg string without any prefix.
+        msg (str): The message string to output.
+        debug_config (image_crawler_utils.configs.DebugConfig): DebugConfig that controls output level. Default set to debug-level (output all).
     """
     
     def _is_ipython_kernel():
@@ -39,16 +40,23 @@ def print_logging_msg(
     custom_tqdm = notebook if _is_ipython_kernel() else tqdm
     time_str = f'{Fore.CYAN}[{datetime.datetime.now().strftime("%H:%M:%S")}]{Style.RESET_ALL}'
     
-    if level.lower() == 'debug' and debug_config.show_debug:
-        custom_tqdm.tqdm.write(f"{time_str} {Fore.BLUE}[DEBUG]{Style.RESET_ALL}: {msg}")
-    elif level.lower() == 'info' and debug_config.show_info:
-        custom_tqdm.tqdm.write(f"{time_str} {Fore.GREEN}[INFO]{Style.RESET_ALL}: {msg}")
-    elif (level.lower() == 'warning' or level.lower() == 'warn') and debug_config.show_warning:
-        custom_tqdm.tqdm.write(f"{time_str} {Fore.YELLOW}[WARNING]{Style.RESET_ALL}: {msg}")
-    elif level.lower() == 'error' and debug_config.show_error:
-        custom_tqdm.tqdm.write(f"{time_str} {Fore.RED}[ERROR]{Style.RESET_ALL}: {msg}")
-    elif level.lower() == 'critical' and debug_config.show_critical:
-        custom_tqdm.tqdm.write(f"{time_str} {Back.RED}{Fore.WHITE}[CRITICAL]{Style.RESET_ALL}: {msg}")
+    if level.lower() == 'debug':
+        if debug_config.show_debug:
+            custom_tqdm.tqdm.write(f"{time_str} {Fore.BLUE}[DEBUG]{Style.RESET_ALL}: {msg}")
+    elif level.lower() == 'info':
+        if debug_config.show_info:
+            custom_tqdm.tqdm.write(f"{time_str} {Fore.GREEN}[INFO]{Style.RESET_ALL}: {msg}")
+    elif level.lower() == 'warning' or level.lower() == 'warn':
+        if debug_config.show_warning:
+            custom_tqdm.tqdm.write(f"{time_str} {Fore.YELLOW}[WARNING]{Style.RESET_ALL}: {msg}")
+    elif level.lower() == 'error':
+        if debug_config.show_error:
+            custom_tqdm.tqdm.write(f"{time_str} {Fore.RED}[ERROR]{Style.RESET_ALL}: {msg}")
+    elif level.lower() == 'critical':
+        if debug_config.show_critical:
+            custom_tqdm.tqdm.write(f"{time_str} {Back.RED}{Fore.WHITE}[CRITICAL]{Style.RESET_ALL}: {msg}")
+    else:
+        custom_tqdm.tqdm.write(msg)
 
 
 class Log:
@@ -63,7 +71,7 @@ class Log:
 
         Parameters:
             log_file (str): Output name for the logging file. NO SUFFIX APPENDED. Set to None (Default) is not to output any file.
-            debug_config (image_crawler_utils.config.DebugConfig): Set the OUTPUT MESSAGE TO CONSOLE level. Default is not to output any message.
+            debug_config (image_crawler_utils.configs.DebugConfig): Set the OUTPUT MESSAGE TO CONSOLE level. Default is not to output any message.
             logging_level: Set the logging level of the LOGGING FILE. Select from: logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR and logging.CRITICAL .
         """
 
@@ -97,41 +105,89 @@ class Log:
             self.logger.addHandler(self.file_handler)
 
     # Check whether logging to file
-    def is_logging_to_file(self):
+    def logging_file_handler(self):
+        """
+        Return the file handler if logging into file, or None if not.
+        """
+
         return self.file_handler is not None
     
     # Output .log path
-    def logging_file_info(self):
-        if self.is_logging_to_file():
-            return self.filename
+    def logging_file_path(self):
+        """
+        Output the absolute path of logging file if exists, or None if not.
+        """
+
+        if self.logging_file_handler():
+            return os.path.abspath(self.log_file)
         else:
             return None
 
     # Five levels of logging
     # msg will be recorded in logging file
     # output_msg will be printed on console instead of msg if it isn't None.
-    def debug(self, msg, output_msg=None):
+    def debug(self, msg: str, output_msg: Optional[str]=None):
+        """
+        Output debug messages.
+
+        Parameters:
+            msg (str): Logging message.
+            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+        """
+
         self.logger.debug(msg)
-        print_logging_msg("debug", output_msg if output_msg is not None else msg, debug_config=self.debug_config)
+        print_logging_msg(output_msg if output_msg is not None else msg, "debug", self.debug_config)
         return msg
 
-    def info(self, msg, output_msg=None):
+    def info(self, msg: str, output_msg: Optional[str]=None):
+        """
+        Output info messages.
+
+        Parameters:
+            msg (str): Logging message.
+            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+        """
+        
         self.logger.info(msg)
-        print_logging_msg("info", output_msg if output_msg is not None else msg, debug_config=self.debug_config)
+        print_logging_msg(output_msg if output_msg is not None else msg, "info", self.debug_config)
         return msg
 
-    def warning(self, msg, output_msg=None):
+    def warning(self, msg: str, output_msg: Optional[str]=None):
+        """
+        Output warning messages.
+
+        Parameters:
+            msg (str): Logging message.
+            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+        """
+        
         self.logger.warning(msg)
-        print_logging_msg("warning", output_msg if output_msg is not None else msg, debug_config=self.debug_config)
+        print_logging_msg(output_msg if output_msg is not None else msg, "warning", self.debug_config)
         return msg
 
-    def error(self, msg, output_msg=None):
+    def error(self, msg: str, output_msg: Optional[str]=None):
+        """
+        Output error messages.
+
+        Parameters:
+            msg (str): Logging message.
+            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+        """
+        
         self.logger.error(msg)
-        print_logging_msg("error", output_msg if output_msg is not None else msg, debug_config=self.debug_config)
+        print_logging_msg(output_msg if output_msg is not None else msg, "error", self.debug_config)
         return msg
 
-    def critical(self, msg, output_msg=None):
+    def critical(self, msg: str, output_msg: Optional[str]=None):
+        """
+        Output critical messages.
+
+        Parameters:
+            msg (str): Logging message.
+            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+        """
+        
         self.logger.critical(msg)
-        print_logging_msg("critical", output_msg if output_msg is not None else msg, debug_config=self.debug_config)
+        print_logging_msg(output_msg if output_msg is not None else msg, "critical", self.debug_config)
         return msg
     

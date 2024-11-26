@@ -11,7 +11,7 @@ from urllib import parse
 import nodriver
 
 from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
-from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, keyword_list_tree
+from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
 from image_crawler_utils.user_agent import UserAgent
 from image_crawler_utils.utils import custom_tqdm, set_up_nodriver_browser
 
@@ -98,18 +98,18 @@ class PixivKeywordParser(KeywordParser):
     # Generate keyword string from keyword tree
     def __build_keyword_str(self, tree: KeywordLogicTree) -> str:
         # Generate standard keyword string
-        if isinstance(tree.son1, str):
-            res1 = tree.son1
+        if isinstance(tree.lchild, str):
+            res1 = tree.lchild
             while '_' in res1 or '*' in res1:  # Pixiv does not support _ and *
                 res1 = res1.replace("_", "").replace("*", "")
         else:
-            res1 = self.__build_keyword_str(tree.son1)
-        if isinstance(tree.son2, str):
-            res2 = tree.son2
+            res1 = self.__build_keyword_str(tree.lchild)
+        if isinstance(tree.rchild, str):
+            res2 = tree.rchild
             while '_' in res2 or '*' in res2:  # Pixiv does not support _ and *
                 res2 = res2.replace("_", "").replace("*", "")
         else:
-            res2 = self.__build_keyword_str(tree.son2)
+            res2 = self.__build_keyword_str(tree.rchild)
 
         if tree.logic_operator == "AND":
             return f'({res1} {res2})'
@@ -130,11 +130,11 @@ class PixivKeywordParser(KeywordParser):
     # Keyword (include) string
     def generate_keyword_string_include(self) -> str:
         keyword_group = min_len_keyword_group(self.keyword_tree.keyword_include_group_list())
-        keyword_strings = [self.__build_keyword_str(keyword_list_tree(group, log=self.crawler_settings.log)) 
+        keyword_strings = [self.__build_keyword_str(construct_keyword_tree_from_list(group, log=self.crawler_settings.log)) 
                            for group in keyword_group]
         min_image_num = None
 
-        self.crawler_settings.log.info("Testing the page num of keyword (include) groups to find the one with fewest pages.")
+        self.crawler_settings.log.info("Testing the image num of keyword (include) groups to find the one with fewest pages.")
         with custom_tqdm.trange(
             len(keyword_strings),
             desc="Requesting pages",
@@ -148,7 +148,9 @@ class PixivKeywordParser(KeywordParser):
                     min_image_num = image_num
                     min_string = string
                 pbar.update()
+                
         self.keyword_string = min_string
+        self.crawler_settings.log.info(f'The keyword string the parser will use is "{self.keyword_string}" which has {min_image_num} {"images" if min_image_num > 1 else "image"}.')
         return self.keyword_string
 
 

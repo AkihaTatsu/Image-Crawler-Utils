@@ -34,7 +34,7 @@ def download_image(
     Parameters:
         url (str): The URL of the image to download.
         image_name (str): Name of image to be stored.
-        download_config (image_crawler_utils.config.DownloadConfig): Comprehensive download config.
+        download_config (image_crawler_utils.configs.DownloadConfig): Comprehensive download config.
         headers (dict, function or None): Custom headers that will overwrite the ones in download_config.
         proxies (dict, function or None): Custom proxies that will overwrite the ones in download_config.
         log (config.Log): The logger.
@@ -105,7 +105,7 @@ def download_image(
 
                         # Detect incomplete image
                         if downloaded_size != image_size:
-                            time.sleep(download_config.randomized_fail_delay)
+                            time.sleep(download_config.result_fail_delay)
                             log.warning(f'"{image_name}" downloaded at attempt {i + 1} is incomplete. Retry downloading.')
                             continue
 
@@ -156,7 +156,7 @@ def download_image(
                     break
                 else:
                     log.warning(f'Downloading "{image_name}" at attempt {i + 1} from \"{url}\" FAILED because response code is {response.status_code}. Retry downloading.')
-                    time.sleep(download_config.randomized_fail_delay)
+                    time.sleep(download_config.result_fail_delay)
                     continue
             
         except Exception as e:
@@ -164,6 +164,6 @@ def download_image(
                         output_msg=f'Downloading "{image_name}" at attempt {i + 1} FAILED. Retry downloading.')
             if os.path.exists(image_path):  # Remove tmp file
                 os.remove(image_path)
-            time.sleep(download_config.randomized_fail_delay)
+            time.sleep(download_config.result_fail_delay)
         
     return False, 0

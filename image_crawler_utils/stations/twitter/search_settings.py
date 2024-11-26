@@ -61,7 +61,7 @@ class TwitterSearchSettings:
                 time.strptime(new_s, "%Y-%m-%d")
                 return new_s
             except:
-                print_logging_msg("warning", f'{s} is not a valid "year-month-date" format! It will be ignored.')
+                print_logging_msg(f'{s} is not a valid "year-month-date" format! It will be ignored.', "warning")
                 return ''
         self.starting_date = time_format(self.starting_date)
         self.ending_date = time_format(self.ending_date)

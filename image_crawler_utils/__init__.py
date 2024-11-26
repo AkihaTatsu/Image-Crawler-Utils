@@ -6,7 +6,6 @@ from .classes.cookies import (
 )
 from .classes.crawler_settings import (
     CrawlerSettings,
-    Empty,
 )
 from .classes.downloader import (
     Downloader,
@@ -25,7 +24,6 @@ __all__ = [
     "Cookies",
     "update_nodriver_browser_cookies",
     "CrawlerSettings",
-    "Empty",
     "Downloader",
     "Parser",
     "KeywordParser",

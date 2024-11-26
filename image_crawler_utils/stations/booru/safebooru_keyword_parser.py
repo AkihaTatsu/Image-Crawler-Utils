@@ -6,7 +6,7 @@ from urllib import parse
 import requests
 
 from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
-from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, keyword_list_tree
+from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
 from image_crawler_utils.utils import custom_tqdm
 
 from .constants import GELBOORU_IMAGE_NUM_PER_GALLERY_PAGE, GELBOORU_IMAGE_NUM_PER_JSON, MAX_SAFEBOORU_JSON_PAGE_NUM, SPECIAL_WEBSITES
@@ -78,14 +78,14 @@ class SafebooruKeywordParser(KeywordParser):
     # Generate keyword string from keyword tree
     def __build_keyword_str(self, tree: KeywordLogicTree) -> str:
         # Generate standard keyword string
-        if isinstance(tree.son1, str):
-            res1 = tree.son1
+        if isinstance(tree.lchild, str):
+            res1 = tree.lchild
         else:
-            res1 = self.__build_keyword_str(tree.son1)
-        if isinstance(tree.son2, str):
-            res2 = tree.son2
+            res1 = self.__build_keyword_str(tree.lchild)
+        if isinstance(tree.rchild, str):
+            res2 = tree.rchild
         else:
-            res2 = self.__build_keyword_str(tree.son2)
+            res2 = self.__build_keyword_str(tree.rchild)
 
         if tree.logic_operator == "AND":
             return f'( {res1} {res2} )'
@@ -111,7 +111,7 @@ class SafebooruKeywordParser(KeywordParser):
             
         # In Danbooru, no more than 2 keywords can be applied at the same time when having no account.
         keyword_group = min_len_keyword_group(self.keyword_tree.keyword_include_group_list(), below=2)
-        keyword_strings = [self.__build_keyword_str(keyword_list_tree(group, log=self.crawler_settings.log)) 
+        keyword_strings = [self.__build_keyword_str(construct_keyword_tree_from_list(group, log=self.crawler_settings.log)) 
                            for group in keyword_group]
         min_page_num = None
 
@@ -129,7 +129,9 @@ class SafebooruKeywordParser(KeywordParser):
                     min_page_num = page_num
                     min_string = string
                 pbar.update()
+                
         self.keyword_string = min_string
+        self.crawler_settings.log.info(f'The keyword string the parser will use is "{self.keyword_string}" which has {min_page_num} {"pages" if min_page_num > 1 else "page"}.')
         return self.keyword_string
 
 

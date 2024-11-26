@@ -29,7 +29,7 @@ def download_image_from_url(
     Parameters:
         url (str): The URL of the image to download.
         image_name (str): Name of image to be stored.
-        download_config (image_crawler_utils.config.DownloadConfig): Comprehensive download config.
+        download_config (image_crawler_utils.configs.DownloadConfig): Comprehensive download config.
         log (config.Log): The logger.
         store_path (str): Path of image to be stored.
         session (requests.Session): A session that may contain cookies.
@@ -75,7 +75,7 @@ def download_image_from_url(
     else:
         edited_image_name = image_name
 
-    time.sleep(download_config.randomized_thread_delay)
+    time.sleep(download_config.result_thread_delay)
     # Start downloading
     is_success, image_size = download_image(
         url=url,

@@ -307,7 +307,7 @@ async def scrolling_to_find_status(
                 output_msg_base = f'Failed to load page \"{tab_url}\" at attempt {retry_count}'
                 crawler_settings.log.warning(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}")
                 if retry_count < crawler_settings.download_config.retry_times - 1:  # Not the last reloading
-                    await asyncio.sleep(crawler_settings.download_config.randomized_thread_delay)
+                    await asyncio.sleep(crawler_settings.download_config.result_thread_delay)
                     await tab.get(tab_url)  # Refresh
                     not_from_retry_button = True
 

@@ -10,10 +10,41 @@ from image_crawler_utils.log import Log
 
 
 
+##### Constants
+
+
+ESCAPE_CHAR_DICT = {
+    '\\\\': 'Ａ',
+    '\\[': 'Ｂ',
+    '\\]': 'Ｃ',
+    '\\&': 'Ｄ',
+    '\\|': 'Ｅ',
+    '\\!': 'Ｆ',
+}
+OPERATOR_DICT = {'&': "AND", '|': "OR", '!': "NOT"}
+BINARY_OPERATORS = ['&', '|']
+UNARY_OPERATORS = ['!']
+OPERATOR_PRIORITY = {
+    '[': 15,
+    ']': 15,
+    '!': 14,
+    '&': 5,
+    '|': 4,
+}  # Bigger the number, higher the priority
+
+
+##### KeywordLogicTree
+
+
 @dataclasses.dataclass
 class KeywordLogicTree:
     """
     A binary tree to record the logic structure of keywords.
+
+    Parameters:
+        lchild (str or KeywordLogicTree): Left child.
+        rchild (str or KeywordLogicTree): Right child.
+        logic_operator (str): Logic operator.
     
     Attributes:
         simplify_tree(): Simplify the tree structure by cleaning "SINGLE" nodes and double "NOT" nodes.
@@ -24,45 +55,32 @@ class KeywordLogicTree:
         keyword_include_group_list(): Return a list of keyword groups. The images with valid keywords are a subset of the images from the result of  searching all keywords in the keyword group connected by "OR".
     """
 
-    son1: Union[str, KeywordLogicTree] = ''
-    son2: Union[str, KeywordLogicTree] = ''
-    # Logic operator, should only be in "AND", "OR", "NOT", "SINGLE"; when it is "NOT" or "SINGLE", son1 should be omiited
-    # "SINGLE" means this node has only one element son2. After building a tree, use simplify_tree() to simplify these nodes.
+    lchild: Union[str, KeywordLogicTree] = ''
+    rchild: Union[str, KeywordLogicTree] = ''
+    # Logic operator, should only be in "AND", "OR", "NOT", "SINGLE"; when it is "NOT" or "SINGLE", lchild should be omiited
+    # "SINGLE" means this node has only one element rchild. After building a tree, use simplify_tree() to simplify these nodes.
     logic_operator: str = "SINGLE"
 
+
     def __post_init__(self):
+        if isinstance(self.lchild, str):
+            self.lchild = unicodedata.normalize("NFKC", self.lchild.strip())
+        if isinstance(self.rchild, str):
+            self.rchild = unicodedata.normalize("NFKC", self.rchild.strip())
         if self.logic_operator not in ("AND", "OR", "NOT", "SINGLE"):
             self.logic_operator = "SINGLE"
-
-
-    def __expr__(self):
-        return build_standard_keyword_str(self)
-
     
-    # Remove any "SINGLE" successor nodes except the current node, and simplify double negative structure
-    def simplify_tree(self) -> None:
+
+    # Check if it's empty
+    def is_empty(self) -> bool:
         """
-        Simplify the tree structure by cleaning "SINGLE" nodes and double "NOT" nodes.
+        Check whether current KeywordLogicTree is empty.
         """
 
-        if type(self.son1) is not str:
-            self.son1.simplify_tree()
-        if type(self.son2) is not str:
-            self.son2.simplify_tree()
-
-        if type(self.son1) is not str:
-            if self.son1.logic_operator == "SINGLE":
-                self.son1 = self.son1.son2
-            elif self.son1.logic_operator == "NOT":
-                if type(self.son1.son2) is not str and self.son1.son2.logic_operator == "NOT":
-                    self.son1 = self.son1.son2.son2
-
-        if type(self.son2) is not str:
-            if self.son2.logic_operator == "SINGLE":
-                self.son2 = self.son2.son2
-            elif self.son2.logic_operator == "NOT":
-                if type(self.son2.son2) is not str and self.son2.son2.logic_operator == "NOT":
-                    self.son2 = self.son2.son2.son2
+        if self.logic_operator == "SINGLE" and self.rchild == '':
+            return True
+        else:
+            return False
                     
 
     # Check whether it is leaf node
@@ -74,12 +92,43 @@ class KeywordLogicTree:
             A boolean.
         """
 
-        if (self.logic_operator == "NOT" or self.logic_operator == "SINGLE") and type(self.son2) is str:
+        if (self.logic_operator == "NOT" or self.logic_operator == "SINGLE") and isinstance(self.rchild, str):
             return True
-        elif type(self.son1) == type(self.son2) and type(self.son1) is str:
+        elif type(self.lchild) == type(self.rchild) and isinstance(self.lchild, str):
             return True
         else:
             return False
+
+    
+    # Remove any "SINGLE" successor nodes except the current node, and simplify double negative structure
+    def simplify_tree(self) -> None:
+        """
+        Simplify the tree structure by cleaning "SINGLE" nodes and double "NOT" nodes.
+        """
+
+        if isinstance(self.lchild, KeywordLogicTree):
+            self.lchild.simplify_tree()
+        if isinstance(self.rchild, KeywordLogicTree):
+            self.rchild.simplify_tree()
+
+        if isinstance(self.lchild, KeywordLogicTree):
+            if self.lchild.logic_operator == "SINGLE":
+                self.lchild = self.lchild.rchild
+            elif self.lchild.logic_operator == "NOT":
+                if isinstance(self.lchild.rchild, KeywordLogicTree) and self.lchild.rchild.logic_operator == "NOT":
+                    self.lchild = self.lchild.rchild.rchild
+
+        if isinstance(self.rchild, KeywordLogicTree):
+            if self.rchild.logic_operator == "SINGLE":
+                self.rchild = self.rchild.rchild
+            elif self.rchild.logic_operator == "NOT":
+                if isinstance(self.rchild.rchild, KeywordLogicTree) and self.rchild.rchild.logic_operator == "NOT":
+                    self.rchild = self.rchild.rchild.rchild
+
+        if self.logic_operator == "SINGLE" and isinstance(self.rchild, KeywordLogicTree):
+            self.logic_operator = self.rchild.logic_operator
+            self.lchild = self.rchild.lchild
+            self.rchild = self.rchild.rchild
         
 
     # Return this tree as list structure
@@ -91,19 +140,51 @@ class KeywordLogicTree:
             A list with the structure of this keyword tree.
         """
 
-        if type(self.son2) is str:
-            key_list2 = self.son2
+        if isinstance(self.rchild, str):
+            key_list2 = self.rchild
         else:
-            key_list2 = self.son2.list_struct()
+            key_list2 = self.rchild.list_struct()
 
         if self.logic_operator == "NOT" or self.logic_operator == "SINGLE":
             return [self.logic_operator, key_list2]
         else:
-            if type(self.son1) is str:
-                key_list1 = self.son1
+            if isinstance(self.lchild, str):
+                key_list1 = self.lchild
             else:
-                key_list1 = self.son1.list_struct()
+                key_list1 = self.lchild.list_struct()
             return [key_list1, self.logic_operator, key_list2]
+        
+
+    # Return this tree as a standard keyword string
+    def standard_keyword_string(self) -> str:
+        """
+        Build a standard keyword string from a tree.
+
+        Returns:
+            A standard keyword string.
+        """
+
+        if isinstance(self.lchild, str):
+            res1 = self.lchild
+            for key in ESCAPE_CHAR_DICT.keys():
+                res1 = res1.replace(key[1], key)
+        else:
+            res1 = self.lchild.standard_keyword_string()
+        if isinstance(self.rchild, str):
+            res2 = self.rchild
+            for key in ESCAPE_CHAR_DICT.keys():
+                res2 = res2.replace(key[1], key)
+        else:
+            res2 = self.rchild.standard_keyword_string()
+
+        if self.logic_operator == "AND":
+            return f'[{res1} AND {res2}]'
+        elif self.logic_operator == "OR":
+            return f'[{res1} OR {res2}]'
+        elif self.logic_operator == "NOT":
+            return f'[NOT {res2}]'
+        elif self.logic_operator == "SINGLE":
+            return f'{res2}'
 
     
     # Return all keywords in a list
@@ -115,14 +196,14 @@ class KeywordLogicTree:
             A list with all the keywords in this tree.
         """
 
-        if type(self.son1) is str:
-            key_list1 = [self.son1]
+        if isinstance(self.lchild, str):
+            key_list1 = [self.lchild]
         else:
-            key_list1 = self.son1.all_keywords()        
-        if type(self.son2) is str:
-            key_list2 = [self.son2]
+            key_list1 = self.lchild.all_keywords()        
+        if isinstance(self.rchild, str):
+            key_list2 = [self.rchild]
         else:
-            key_list2 = self.son2.all_keywords()
+            key_list2 = self.rchild.all_keywords()
 
         if self.logic_operator in ["NOT", "SINGLE"]:
             return key_list2
@@ -133,7 +214,7 @@ class KeywordLogicTree:
     # Check if a keyword list is acceptable
     def keyword_list_check(self, keyword_list: Iterable[str]) -> bool:
         """
-        Check whether current keyword list is valid.
+        Check whether the keyword list matches this tree.
 
         Parameters:
             keyword_list (list of strings): The keyword list to check.
@@ -163,23 +244,23 @@ class KeywordLogicTree:
         
         if len(edited_keyword_list) <= 0:
             return False
-        if type(self.son1) is str:
+        if isinstance(self.lchild, str):
             if self.logic_operator in ["AND", "OR"]:
                 flag = False
                 for key in keyword_list:
-                    if match_str(self.son1, key):
+                    if match_str(self.lchild, key):
                         flag = True
                 res1 = flag
         else:
-            res1 = self.son1.keyword_list_check(edited_keyword_list)
-        if type(self.son2) is str:
+            res1 = self.lchild.keyword_list_check(edited_keyword_list)
+        if isinstance(self.rchild, str):
             flag = False
             for key in keyword_list:
-                if match_str(self.son2, key):
+                if match_str(self.rchild, key):
                     flag = True
             res2 = flag
         else:
-            res2 = self.son2.keyword_list_check(edited_keyword_list)
+            res2 = self.rchild.keyword_list_check(edited_keyword_list)
 
         if self.logic_operator == "AND":
             return res1 and res2
@@ -191,33 +272,30 @@ class KeywordLogicTree:
             return res2
         
     
-    # Output keyword lists that "CONTAIN" all possible results
-    # Example: for "A AND (B OR C)", search A can contain all possible results
-    def keyword_include_group_list(self) -> list[list]:
+    # Output keyword groups that "CONTAIN" all possible results
+    def keyword_include_group_list(self) -> list[list[str]]:
         """
-        Return a list of keyword groups. The images with valid keywords are a subset of the images from the result of  searching all keywords in the keyword group connected by "OR".
-
-        Parameters:
-            The keyword list to check.
+        Return a list of keyword groups. The images with valid keywords are a subset of the images from the result of searching all keywords in the keyword group connected by "OR".
+        Example: for "A AND [B OR C]", search "A" or "B OR C" can contain all possible results.
 
         Returns:
             A list of keyword groups (i.e. lists of keywords).
         """
 
-        if type(self.son2) is str:
-            key_list_list2 = [[self.son2]]
+        if isinstance(self.rchild, str):
+            key_list_list2 = [[self.rchild]]
         else:
-            key_list_list2 = self.son2.keyword_include_group_list()
+            key_list_list2 = self.rchild.keyword_include_group_list()
         
         if self.logic_operator == "SINGLE":
             return key_list_list2
         elif self.logic_operator == "NOT":
             return []
         else:
-            if type(self.son1) is str:
-                key_list_list1 = [[self.son1]]
+            if isinstance(self.lchild, str):
+                key_list_list1 = [[self.lchild]]
             else:
-                key_list_list1 = self.son1.keyword_include_group_list()
+                key_list_list1 = self.lchild.keyword_include_group_list()
             
             if self.logic_operator == "AND":
                 new_list = [*key_list_list1, *key_list_list2]
@@ -231,81 +309,11 @@ class KeywordLogicTree:
                         if new_list[i] not in new_list[:i]]  # Remove same element
 
 
-
-##### Functions
-
-
-# Minimal length keyword group select
-def min_len_keyword_group(keyword_group_list: Iterable[Iterable], below: Optional[int]=None) -> list[list]:
-    """
-    For a list of keyword groups (i.e. lists of keywords), get a list of keyword group with the smallest length.
-    
-    Parameters:
-        keyword_group_list (list of list of string): A list of keyword groups.
-        below (int): If not None, try return all keyword group with length below "below" parameter. If such groups don't exist, return the one with the smallest length.
-
-    Returns:
-        A list of keyword groups (i.e. lists of keywords)
-    """
-    if(len(keyword_group_list) <= 0):
-        return []
-    
-    min_group_list = [keyword_group_list[0]]
-    min_len = len(keyword_group_list[0])
-
-    if below is not None:
-        below_group_list = []
-        
-    for group in keyword_group_list:
-        
-        if below is not None and len(group) <= below and group not in below_group_list:
-            below_group_list.append(group)
-
-        if len(group) < min_len:
-            min_len = len(group)
-            min_group_list = [group]
-        elif len(group) == min_len and group not in min_group_list:
-            min_group_list.append(group)
-
-    if len(below_group_list) > 0:
-        return below_group_list
-    else:
-        return min_group_list
-
-
-# Standard keyword string built from a tree
-def build_standard_keyword_str(tree: KeywordLogicTree):
-    """
-    Build a standard keyword string from a tree.
-
-    Returns:
-        A standard keyword string.
-    """
-
-    if isinstance(tree.son1, str):
-        res1 = tree.son1
-    else:
-        res1 = build_standard_keyword_str(tree.son1)
-    if isinstance(tree.son2, str):
-        res2 = tree.son2
-    else:
-        res2 = build_standard_keyword_str(tree.son2)
-
-    if tree.logic_operator == "AND":
-        return f'[{res1} AND {res2}]'
-    elif tree.logic_operator == "OR":
-        return f'[{res1} OR {res2}]'
-    elif tree.logic_operator == "NOT":
-        return f'[NOT {res2}]'
-    elif tree.logic_operator == "SINGLE":
-        return f'{res2}'
-    
-
 ##### Functions related to construction of a keyword tree
 
 
 # Build element list from string and do some cleaning up
-def __from_str_to_elem_list(keyword_str, log: Log=Log()):
+def __from_str_to_elem_list(keyword_str):
     def replace_clean_str(original_str, search_str, replace_str, cleanup_replace_str=True):
         new_str = original_str
         if type(search_str) in [list, tuple, set]:
@@ -323,6 +331,11 @@ def __from_str_to_elem_list(keyword_str, log: Log=Log()):
     new_str = unicodedata.normalize("NFKC", keyword_str).strip()  # No full-width characters!
     if len(new_str) == 0:  # Empty!
         return []
+    
+    # Replace escape character with full-width codes (as string itself has been NFKC normalized)
+    for key, value in ESCAPE_CHAR_DICT.items():
+        new_str = new_str.replace(key, value)
+
     new_str = new_str.replace('[', ' [ ')
     new_str = new_str.replace(']', ' ] ')
     new_str = replace_clean_str(new_str, ' ', '_')
@@ -343,10 +356,6 @@ def __from_str_to_elem_list(keyword_str, log: Log=Log()):
                                     cleanup_replace_str=False)
         
     new_str = replace_clean_str(new_str, '!!', '')
-
-    if '&&' in new_str or '||' in new_str:
-        log.critical("Invalid keyword syntax.")
-        return None
 
     # Split but insert split str into the middle
     def advanced_split(original_str_list, split_str, keep=True):
@@ -370,78 +379,82 @@ def __from_str_to_elem_list(keyword_str, log: Log=Log()):
         new_str_list = advanced_split(new_str_list, operator)
     new_str_list = [item.strip('_') for item in new_str_list if len(item) > 0 and item != '_']
 
+    # Check if there are TWO_ELEM_OPERANDS that are adjacent to each other
+    
+    if len(new_str_list) > 1:
+        for i in range(len(new_str_list) - 1):
+            if new_str_list[i] in BINARY_OPERATORS and new_str_list[i + 1] in BINARY_OPERATORS:
+                raise SyntaxError(f"Binary operators cannot be adjacent to each other.")
+
+    # Restore escape characters
+    restore_char_dict = {value: key[1] 
+                         for key, value in ESCAPE_CHAR_DICT.items()}
+    for i in range(len(new_str_list)):
+        for key, value in restore_char_dict.items():
+            new_str_list[i] = new_str_list[i].replace(key, value)
+
     return new_str_list
 
 
 # build_binary_tree func
-def __build_binary_tree(element_list, log: Log=Log()) -> Optional[KeywordLogicTree]:
+def __build_binary_tree(element_list, log: Log=Log()) -> KeywordLogicTree:
     if len(element_list) == 0:  # Empty!
         return KeywordLogicTree()
 
-    operator_dict = {'&': "AND", '|': "OR", '!': "NOT"}
-    two_elem_operands = ['&', '|']
-    one_elem_operands = ['!']
     edited_element_list = ['['] + element_list + [']']
-    operand_priority = {
-        '[': 15,
-        ']': 15,
-        '!': 14,
-        '&': 5,
-        '|': 4,
-    }  # Bigger the number, higher the priority
-    operand_stack = []
+    operator_stack = []
     keyword_stack = []
 
-    # Define the operand popping func
-    def pop_operand_stack(push_elem):
+    # Define the operator popping func
+    def pop_operator_stack(push_elem):
         last_elem = push_elem
-        while (push_elem == ']' and last_elem != '[') or (len(operand_stack) > 0 
-            and operand_priority[last_elem] <= operand_priority[operand_stack[-1]]):
-            # Pop operand stack and do operations
-            popped_operand = operand_stack.pop()
-            last_elem = popped_operand
-            if popped_operand in one_elem_operands:
+        while (push_elem == ']' and last_elem != '[') or (len(operator_stack) > 0 
+            and OPERATOR_PRIORITY[last_elem] <= OPERATOR_PRIORITY[operator_stack[-1]]):
+            # Pop operator stack and do operations
+            popped_operator = operator_stack.pop()
+            last_elem = popped_operator
+            if popped_operator in UNARY_OPERATORS:
                 keyword = keyword_stack.pop()
                 node = KeywordLogicTree(
-                    logic_operator=operator_dict[popped_operand],
-                    son2=keyword,
+                    logic_operator=OPERATOR_DICT[popped_operator],
+                    rchild=keyword,
                 )
                 keyword_stack.append(node)
-            elif popped_operand in two_elem_operands:
+            elif popped_operator in BINARY_OPERATORS:
                 keyword1 = keyword_stack.pop()
                 keyword2 = keyword_stack.pop()
                 node = KeywordLogicTree(
-                    son1=keyword2,
-                    logic_operator=operator_dict[popped_operand],
-                    son2=keyword1,
+                    lchild=keyword2,
+                    logic_operator=OPERATOR_DICT[popped_operator],
+                    rchild=keyword1,
                 )
                 keyword_stack.append(node)
-            elif popped_operand in ['[']:
-                operand_stack.append(popped_operand)
+            elif popped_operator in ['[']:
+                operator_stack.append(popped_operator)
                 break
             else:
-                raise ValueError(f'Invalid operand: {popped_operand}')
-        operand_stack.append(push_elem)
-        if len(operand_stack) > 2 and operand_stack[-1] == ']' and operand_stack[-2] == '[':
-            operand_stack.pop()
-            operand_stack.pop()
+                raise ValueError(f'Invalid operator: {popped_operator}')
+        operator_stack.append(push_elem)
+        if len(operator_stack) > 2 and operator_stack[-1] == ']' and operator_stack[-2] == '[':
+            operator_stack.pop()
+            operator_stack.pop()
 
     # Running the pushing and popping
     try:
         for elem in edited_element_list:
-            if elem not in operand_priority.keys():
+            if elem not in OPERATOR_PRIORITY.keys():
                 keyword_stack.append(elem)
-                if operand_stack[-1] in one_elem_operands:
+                if operator_stack[-1] in UNARY_OPERATORS:
                     node = KeywordLogicTree(
-                        logic_operator=operator_dict[operand_stack[-1]],
-                        son2=keyword_stack.pop(),
+                        logic_operator=OPERATOR_DICT[operator_stack[-1]],
+                        rchild=keyword_stack.pop(),
                     )
                     keyword_stack.append(node)
-                    operand_stack.pop()
-                    pop_operand_stack(push_elem=operand_stack.pop())
+                    operator_stack.pop()
+                    pop_operator_stack(push_elem=operator_stack.pop())
             else:
-                pop_operand_stack(push_elem=elem)
-        return KeywordLogicTree(logic_operator='SINGLE', son2=keyword_stack[0])
+                pop_operator_stack(push_elem=elem)
+        return KeywordLogicTree(logic_operator='SINGLE', rchild=keyword_stack[0])
     except Exception as e:
         output_msg_base = f"Invalid keyword syntax"
         log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}")
@@ -449,13 +462,16 @@ def __build_binary_tree(element_list, log: Log=Log()) -> Optional[KeywordLogicTr
     
 
 # Construct keyword tree
-def construct_keyword_tree(keyword_str: str, log: Log=Log()) -> Optional[KeywordLogicTree]:
+def construct_keyword_tree(
+    keyword_str: str, 
+    log: Log=Log(),
+) -> KeywordLogicTree:
     """
     Use a standard syntax to represent logic relationship of keywords.
     Use ' AND ' / '&', ' OR ' / '|', ' NOT ' / '!' to represent logic operators.
     Use '[', ']' to increase logic priority.
     Any space between two keywords will be replaced with '_' and consider them as one keyword.
-    Example: A B + [C (extra) OR NOT D] -> A_B AND [C_(extra) OR NOT D]
+    Example: A B & [C (extra) OR NOT D] -> A_B AND [C_(extra) OR NOT D]
 
     Parameters:
         keyword_str (str): A string of keywords.
@@ -473,13 +489,18 @@ def construct_keyword_tree(keyword_str: str, log: Log=Log()) -> Optional[Keyword
     
 
 # Convert keyword list (like [A, B, C]) into a tree for (A OR B OR C)
-def keyword_list_tree(keyword_list: Iterable[str], log: Log=Log()) -> Optional[KeywordLogicTree]:
+def construct_keyword_tree_from_list(
+    keyword_list: Iterable[str], 
+    connect_symbol: str='OR', 
+    log: Log=Log(),
+) -> KeywordLogicTree:
     """
-    Convert a list of keywords into a keyword tree connected by "OR".
+    Convert a list of keywords into a keyword tree connected by connect_symbol (default is "OR").
     e.g. ['A', 'B', 'C'] -> [['A' OR 'B'] OR 'C']
 
     Parameters:
         keyword_str (Iterable(str)): A list of strings.
+        connect_symbol (str): Logic symbol of connection. Must be one of 'AND', 'OR', '&' or '|'.
         log (crawler_utils.log.Log, optional): The logging config.
 
     Returns:
@@ -487,5 +508,53 @@ def keyword_list_tree(keyword_list: Iterable[str], log: Log=Log()) -> Optional[K
         If failed, return None.
     """
 
+    connect_symbol_pool = BINARY_OPERATORS + [OPERATOR_DICT[operator] for operator in BINARY_OPERATORS]
+    connect_symbol = connect_symbol.strip()
+    if connect_symbol not in connect_symbol_pool:
+        log.warning(f"Connection symbol {connect_symbol} is not one of {connect_symbol_pool} and will be set to 'OR' (default).")
+        connect_symbol = 'OR'
     new_kw_list = [key.strip() for key in keyword_list if len(key.strip()) > 0]  # Remove '' and space-only string, and space at words' both sides
-    return construct_keyword_tree(' | '.join(new_kw_list), log=log)
+    return construct_keyword_tree((f' {connect_symbol} ').join(new_kw_list), log=log)
+
+
+##### Other Functions
+
+
+# Minimal length keyword group select
+def min_len_keyword_group(
+    keyword_group_list: Iterable[Iterable],
+    below: Optional[int]=None,
+) -> list[list]:
+    """
+    For a list of keyword groups (i.e. lists of keywords), get a list of keyword group with the smallest length, or all keyword groups whose length are no larger than `below`.
+    
+    Parameters:
+        keyword_group_list (list of list of string): A list of keyword groups.
+        below (int): If not None, try return all keyword group with length below "below" parameter. If such groups don't exist, return the one with the smallest length.
+
+    Returns:
+        A list of keyword groups (i.e. lists of keywords)
+    """
+    if(len(keyword_group_list) <= 0):
+        return []
+    
+    min_group_list = [keyword_group_list[0]]
+    min_len = len(keyword_group_list[0])
+    below_group_list = []
+        
+    for group in keyword_group_list:
+        
+        if below is not None and len(group) <= below and group not in below_group_list:
+            below_group_list.append(group)
+
+        if len(group) < min_len:
+            min_len = len(group)
+            min_group_list = [group]
+        elif len(group) == min_len and group not in min_group_list:
+            min_group_list.append(group)
+
+    if below is not None and len(below_group_list) > 0:
+        return below_group_list
+    else:
+        return min_group_list
+    

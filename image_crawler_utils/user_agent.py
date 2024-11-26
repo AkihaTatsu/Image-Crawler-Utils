@@ -3,12 +3,13 @@ import random
 
 
 class UserAgent:
+
     pc_user_agents = {
-        "Chrome 129.0.0, Windows": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
         "Chrome - Windows": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+        "Chrome - MAC": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
         "Edge - Windows": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edge/18.17763", 
-        "safari 5.1 - MAC": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.50",
-        "safari 5.1 - Windows": "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.50",
+        "Safari 5.1 - MAC": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.50",
+        "Safari 5.1 - Windows": "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.50",
         "IE 9.0": "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0",
         "IE 8.0": "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0)",
         "IE 7.0": "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)",
@@ -26,6 +27,7 @@ class UserAgent:
         "Avant": "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Avant Browser)",
         "Green Browser": "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)",
     }
+
 
     mobile_user_agents = {
         "Chrome - iOS": "Mozilla/5.0 (iPhone; CPU iPhone OS 7_0_4 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) CriOS/31.0.1650.18 Mobile/11B554a Safari/8536.25",
@@ -47,20 +49,15 @@ class UserAgent:
         "UC Opera": "Mozilla/4.0 (compatible; MSIE 6.0;) Opera/UCWEB7.0.2.37/28/999",
     }
 
-    def all_user_agents():
-        return {**UserAgent.pc_user_agents, **UserAgent.mobile_user_agents}
 
-    def random_pc_user_agent():
-        random_key = random.choice(list(UserAgent.pc_user_agents.keys()))
-        return {'User-Agent': UserAgent.pc_user_agents[random_key]}
+    @property
+    def user_agents():
+        return {**UserAgent.pc_user_agents, **UserAgent.mobile_user_agents}
     
-    def random_mobile_user_agent():
-        random_key = random.choice(list(UserAgent.mobile_user_agents.keys()))
-        return {'User-Agent': UserAgent.mobile_user_agents[random_key]}
-    
+
     def random_agent_with_name(header_type: str):
         """
-        Select random agents from certain header_type.
+        Select a random user agent with certain header_type.
 
         Parameters:
             header_type (str): The type of headers. e.g. "Chrome" will select randomly from "Chrome Windows", "Chrome MAC", etc.
@@ -69,7 +66,31 @@ class UserAgent:
         random_key = random.choice([key for key in list({**UserAgent.pc_user_agents, **UserAgent.mobile_user_agents}.keys()) if header_type.lower() in key.lower()])
         return {'User-Agent': {**UserAgent.pc_user_agents, **UserAgent.mobile_user_agents}[random_key]}
 
-    def random_user_agent():
-        user_agents = UserAgent.all_user_agents()
+
+    def random_pc_agent():
+        """
+        Select a random PC user agent.
+        """
+
+        random_key = random.choice(list(UserAgent.pc_user_agents.keys()))
+        return {'User-Agent': UserAgent.pc_user_agents[random_key]}
+    
+
+    def random_mobile_agent():
+        """
+        Select a random mobile user agent.
+        """
+
+        random_key = random.choice(list(UserAgent.mobile_user_agents.keys()))
+        return {'User-Agent': UserAgent.mobile_user_agents[random_key]}
+    
+
+    def random_agent():
+        """
+        Select a random user agent.
+        """
+
+        user_agents = UserAgent.user_agents
         random_key = random.choice(list(user_agents.keys()))
         return {'User-Agent': user_agents[random_key]}
+    

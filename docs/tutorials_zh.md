@@ -67,7 +67,7 @@ crawler_settings = CrawlerSettings(
   + `image_num`
   + `capacity`
   + `page_num`
-    + 请参考[CapacityCountConfig()](#capacitycountconfig)章节，这类参数控制爬取时图片和页面的数量，以及图片的总大小。
+    + 其意义请参考[CapacityCountConfig()](#capacitycountconfig)章节，这类参数控制爬取时图片和页面的数量，以及图片的总大小。
     + 留空将会使用CapacityCountConfig中对应参数的默认值。
     + 也可以在设置一个CapacityCountConfig类之后，直接将其传入CrawlerSettings类的`capacity_count_config`参数中；这会覆盖以上参数的设置，如：
       
@@ -95,7 +95,7 @@ crawler_settings = CrawlerSettings(
   + `max_download_time`
   + `retry_time`
   + `overwrite_images`
-    + 请参考[DownloadConfig()](#downloadconfig)章节，这类参数控制与下载网页和图像相关的设置。
+    + 其意义请参考[DownloadConfig()](#downloadconfig)章节，这类参数控制与下载网页和图像相关的设置。
     + 留空将会使用DownloadConfig中对应参数的默认值。
     + 也可以在设置一个DownloadConfig类之后，直接将其传入CrawlerSettings类的`download_config`参数中；这会覆盖以上参数的设置。
   + `debug_config`：应当为`image_crawler_utils.configs.DebugConfig`类，该参数控制消息在控制台上的显示级别。请参考[DebugConfig()](#debugconfig)章节。
@@ -161,7 +161,7 @@ crawler_settings = CrawlerSettings(download_config=DownloadConfig(image_num=20))
 # 保存一个CrawlerSettings
 crawler_settings.save_to_pkl("crawler_settings.pkl")
 
-# 从文件中加载一个CrawlerSettings
+# 从文件中读取一个CrawlerSettings
 new_crawler_settings = CrawlerSettings.load_from_pkl("crawler_settings.pkl")
 
 # 复制一个CrawlerSettings，并修改其download_config
@@ -311,10 +311,10 @@ download_config = DownloadConfig(
     + SOCKS代理：`{'https': 'socks5://127.0.0.1:7890'}`
     + 如果你输入了`'https'`代理，`'http'`代理相应地会自动生成。
     + **注意：** 当前不支持使用用户名和密码。
-+ `thread_delay`：在每个线程开始前的等待时间。
++ `thread_delay`：在每个线程开始前的等待时间（秒）。
   + 获取网页和下载图片都会使用此参数。
   + 部分解析器可能会使用不同的参数来控制等待时间。详细信息请参考[网站任务说明（English）](notes_for_tasks.md)。
-+ `fail_delay`：每次请求失败后的等待时间。
++ `fail_delay`：每次请求失败后的等待时间（秒）。
   + 获取网页和下载图片都会使用此参数。
   + 部分解析器可能会使用不同的参数来控制失败后的等待时间。详细信息请参考[网站任务说明（English）](notes_for_tasks.md)。
 + `randomize_delay`：让`thread_delay`和`fail_delay`变为在0与其实际值之间取值。
@@ -510,8 +510,9 @@ Cookies类可以从`image_crawler_utils`中导入。一个Cookies可以通过`Co
   session.cookies.update(cookies.cookies_dict)
   ```
 
-+ `.cookies_selenium`：以`list`类型表示的cookies，可以在selenium相关的环境下使用。
++ `.cookies_selenium`：以`list[dict]`类型表示的cookies，可以在selenium相关的环境下使用。
   + **注意：** 如果你通过`str`或`dict`创建了一个Cookies，则`.cookies_selenium`**不能**被直接用在selenium的webdriver中（信息存在部分缺失）。这种情况下应当使用`.update_selenium_cookies()`。
++ `.cookies_nodriver`：以`list[nodriver.cdp.network.Cookie]`类型表示的cookies，可以在nodriver相关的环境下使用。
 + `.update_selenium_cookies()`：更新selenium的webdriver中的cookies。其输入应当为一个selenium形式的cookies（一个`list[dict]`），该函数会返回一个新的selenium形式的cookies，其中包含了Cookies类中存储的信息。如果你通过`str`或`dict`创建了一个Cookies类，此函数可以用于向selenium的webdriver添加cookies。
   + 没有domain的cookies会被赋值为输入cookies中出现次数最多的domain。
 
@@ -605,7 +606,7 @@ parser = DanbooruKeywordParser(
 + `crawler_settings`：此解析器使用的CrawlerSettings。
 + `station_url`：网站主页的URL。
   + 当多个网站使用相同的框架时，此参数有效。例如，[yande.re](https://yande.re/)和[konachan.com](https://konachan.com/)同时使用Moebooru建立其网站，此参数必须被指定以处理不同的网站。
-  + 对于类似[Pixiv](https://www.pixiv.net/)的、不存在其他网站使用其框架的网站，此参数不被使用。
+  + 对于类似[Pixiv](https://www.pixiv.net/)的、不存在其他网站使用其框架的网站，此参数已被提前初始化，不需要使用。
 + `standard_keyword_string`：使用标准语法的关键词查询字符串。详细信息参见[关键词的标准语法](#关键词的标准语法)章节。
 + `keyword_string`：如果你希望直接指定搜索时的关键词，将`keyword_string`设置为一个自定义的非空字符串。该参数会**覆盖**`standard_keyword_string`。
   + 例如，将DanbooruKeywordParser中的`keyword_string`设置为`"kuon_(utawarerumono) rating:safe"`意味着将在Danbooru中直接以此字符串搜索；其标准语法关键词字符串的等价为`"kuon_(utawarerumono) AND rating:safe"`。
@@ -639,6 +640,8 @@ parser = DanbooruKeywordParser(
     + 此处**强烈**建议使用`[`和`]`以避免歧义。
     + **注意：** `(`和`)`被视作关键词 / 标签的一部分，而非一个逻辑符号。
   + 逻辑符号的优先级遵循C语言优先级，即：**OR < AND < NOT < [ = ]**
++ 转义字符：用`\`加上以上除`(`、`)`之外的任意一个符号（如`\&`）即可表示其符号本身，同时`\\`可表示`\`
+  + **注意：** Python本身可能不认为类似`\[`、`\]`的字符组合是合法的转义字符，因此需要视情况将原字符串进行相应调整。
 + 如果两个关键词 / 标签之间没有任何逻辑符号连接，则其将会被视为用`_`连接的同一个关键词。例如，`kuon (utawarerumono)`等效于`kuon_(utawarerumono)`。
 + 关键词的通配符：`*`可以替换为任何一个字符串（包括空字符串）。
   + `*key`表示所有以`key`结束的关键词。例如，`*dress`可以匹配到`dress`和`chinadress`。
@@ -946,4 +949,4 @@ download_traffic, succeeded_list, failed_list, skipped_list = downloader.run()
 + `skipped_list`：一个ImageInfo的列表，包含所有跳过下载的图片。
   + 被`image_info_filter`所筛出不下载的图片，由于CapacityCountConfig中`image_num`的限制而未能下载的图片，以及由于DownloadConfig中`overwrite_images`被设置为`False`且目标图片已经存在导致跳过的图片都会被归类到此列表中。
 
-`succeeded_list`、`failed_list`和`skipped_list`可以用`save_image_infos()`或`load_image_infos()`进行保存和加载以便将来使用。
+`succeeded_list`、`failed_list`和`skipped_list`可以用`save_image_infos()`或`load_image_infos()`进行保存和读取以便将来使用。

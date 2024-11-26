@@ -14,15 +14,7 @@ import asyncio
 
 from image_crawler_utils.configs import DebugConfig, CapacityCountConfig, DownloadConfig
 from image_crawler_utils.log import Log, print_logging_msg
-from image_crawler_utils.utils import check_dir, custom_tqdm, set_up_nodriver_browser
-
-
-
-class Empty:
-    """
-    An empty placeholder class, mainly for checking if a parameter is used.
-    """
-    pass
+from image_crawler_utils.utils import check_dir, custom_tqdm, Empty, set_up_nodriver_browser
 
 
 
@@ -56,9 +48,9 @@ class CrawlerSettings:
         A general framework to design a custom crawler.
 
         Parameters:
-            capacity_count_config (image_crawler_utils.config.CapacityCountConfig, optional): Contains configs that restricts downloading numbers and capacity.
-            download_config (image_crawler_utils.config.DownloadConfig, optional): Contains configs about parameters in downloading.
-            debug_config (image_crawler_utils.config.DebugConfig, optional): Contains configs that define which types of messages are shown on the console.
+            capacity_count_config (image_crawler_utils.configs.CapacityCountConfig, optional): Contains configs that restricts downloading numbers and capacity.
+            download_config (image_crawler_utils.configs.DownloadConfig, optional): Contains configs about parameters in downloading.
+            debug_config (image_crawler_utils.configs.DebugConfig, optional): Contains configs that define which types of messages are shown on the console.
 
             image_num (int, optional): Number of images to be parsed / downloaded in total; None means no restriction.
             capacity (float, optional): Total size of images (MB); None means no restriction.
@@ -75,7 +67,7 @@ class CrawlerSettings:
             retry_times (int): Times of retrying to download.
             overwrite_images (bool): Overwrite existing images.
 
-            extra_configs (dict, optional): A list of custom configs.
+            extra_configs (dict, optional): A dict of custom configs.
 
         Attributes:
             set_logging_file(): Adding logging to file with logging level (default logging.DEBUG).
@@ -166,7 +158,7 @@ class CrawlerSettings:
         Dataclasses will be displayed in a neater way.
         """
 
-        print_logging_msg("debug", "========== Current CrawlerSettings ==========")
+        print_logging_msg("========== Current CrawlerSettings ==========", "debug")
 
         for config in [
             self.capacity_count_config,
@@ -201,12 +193,11 @@ class CrawlerSettings:
         for key, value in config_dict.items():
             print('    - ' + str(key) + ': ' + str(value))
         # Have logging file info
-        if self.log.is_logging_to_file():
-            print(f'  - Logging file: {self.log.logging_file_info()}')
-            print(f'  - Absolulte path: {os.path.abspath(self.log.logging_file_info())}')
+        if self.log.logging_file_handler():
+            print(f'  - Logging file: {self.log.logging_file_path()}')
             
         print('')
-        print_logging_msg("debug", "========== Crawler Settings Ending ==========")
+        print_logging_msg("========== Crawler Settings Ending ==========", "debug")
     
 
     # Connectivity test
@@ -345,9 +336,9 @@ class CrawlerSettings:
         Generate a copy of a CrawlerSettings, with (optional) parameters changed.
 
         Parameters:
-            capacity_count_config (image_crawler_utils.config.CapacityCountConfig, optional): Contains configs that restricts downloading numbers and capacity.
-            download_config (image_crawler_utils.config.DownloadConfig, optional): Contains configs about parameters in downloading.
-            debug_config (image_crawler_utils.config.DebugConfig, optional): Contains configs that define which types of messages are shown on the console.
+            capacity_count_config (image_crawler_utils.configs.CapacityCountConfig, optional): Contains configs that restricts downloading numbers and capacity.
+            download_config (image_crawler_utils.configs.DownloadConfig, optional): Contains configs about parameters in downloading.
+            debug_config (image_crawler_utils.configs.DebugConfig, optional): Contains configs that define which types of messages are shown on the console.
 
             image_num (int, optional): Number of images to be parsed / downloaded in total; None means no restriction.
             capacity (float, optional): Total size of images (MB); None means no restriction.

@@ -12,25 +12,27 @@ English | <a href="docs/README_zh.md">简体中文</a>
 
 ## About
 
-A **rather customizable** image crawler structure, designed to download images with their information using multi-threading method. 
+A **rather customizable** image crawler structure, designed to download images with their information using multi-threading method. This GIF depicts a sample run of the [example](examples/example.py):
 
-Besides, several wheels have been implemented to help better build a custom image crawler for yourself.
+![](docs/example.gif)
 
-**Please follow the rules set by robots.txt, and set a low number of threads with high number of delay time when crawling images. Frequent requests and massive download traffic may result in IP addresses being banned or accounts being suspended.**
+Besides, [several classes and functions](docs/classes_and_functions.md) have been implemented to help better build a custom image crawler for yourself.
+
+**Please follow the rules of robots.txt, and set a low number of threads with high number of delay time when crawling images. Frequent requests and massive download traffic may result in IP addresses being banned or accounts being suspended.**
 
 ## Installing
 
 It is recommended to install it by
 
 ```Default
-pip install -i https://test.pypi.org/simple/ image-crawler-utils
+pip install image-crawler-utils
 ```
 
 + Requires `Python >= 3.9`.
 
 ### Attentions!
 
-+ **[nodriver](https://github.com/ultrafunkamsterdam/nodriver)** are used to parse information from certain websites. It is suggested to **install a [Google Chrome](https://www.google.com/chrome/) with the newest version** first to ensure the crawler will be correctly running.
++ **[nodriver](https://github.com/ultrafunkamsterdam/nodriver)** are used to parse information from certain websites. It is suggested to **install the latest version of [Google Chrome](https://www.google.com/chrome/)** first to ensure the crawler will be correctly running.
 
 ## Features (Partial)
 
@@ -49,10 +51,11 @@ pip install -i https://test.pypi.org/simple/ image-crawler-utils
   + [Twitter / X](https://x.com/) - features supported:
     + Downloading images from searching result
     + Downloading images uploaded by a certain user
-+ Logging of crawler operations onto the console and (optional) into a file.
-+ Using `tqdm` bars to denote the progress of crawler.
-+ Save or load the settings of a crawler.
++ Logging of crawler process onto the console and (optional) into a file.
++ Using `tqdm` bars to denote the progress of crawler (Jupyter notebook support is included).
++ Save or load the settings and configs of a crawler.
 + Save or load the information of images for future downloading.
++ Acquire and manage cookies of some websites, including saving and loading them.
 + Several classes and functions for custom image crawler designing.
 
 ## How to Use
@@ -164,8 +167,177 @@ downloader = Downloader(
 downloader.run()
 ```
 
-## Documentations
+Information of an image in the saved `image_info_list.json` is like:
+
+<details>
+<summary><b>ImageInfo Structure in JSON</b></summary>
+
+```json
+{
+    "url": "https://cdn.donmai.us/original/cd/91/cd91f0000b9574bf142d125a1e886e5c.png",
+    "name": "Danbooru 4994142 cd91f0000b9574bf142d125a1e886e5c.png",
+    "info": {
+        "info": {
+            "id": 4994142,
+            "created_at": "2021-12-21T08:02:13.706-05:00",
+            "uploader_id": 772564,
+            "score": 10,
+            "source": "https://i.pximg.net/img-original/img/2020/08/11/12/41/43/83599609_p0.png",
+            "md5": "cd91f0000b9574bf142d125a1e886e5c",
+            "last_comment_bumped_at": null,
+            "rating": "s",
+            "image_width": 2000,
+            "image_height": 2828,
+            "tag_string": "1girl absurdres animal_ears black_eyes black_hair coat grabbing_own_breast hair_ornament hairband highres holding holding_mask japanese_clothes kuon_(utawarerumono) long_hair looking_at_viewer mask ponytail shirokuro_neko_(ouma_haruka) smile solo utawarerumono utawarerumono:_itsuwari_no_kamen",
+            "fav_count": 10,
+            "file_ext": "png",
+            "last_noted_at": null,
+            "parent_id": null,
+            "has_children": false,
+            "approver_id": null,
+            "tag_count_general": 17,
+            "tag_count_artist": 1,
+            "tag_count_character": 1,
+            "tag_count_copyright": 2,
+            "file_size": 4527472,
+            "up_score": 10,
+            "down_score": 0,
+            "is_pending": false,
+            "is_flagged": false,
+            "is_deleted": false,
+            "tag_count": 23,
+            "updated_at": "2024-07-10T12:21:31.782-04:00",
+            "is_banned": false,
+            "pixiv_id": 83599609,
+            "last_commented_at": null,
+            "has_active_children": false,
+            "bit_flags": 0,
+            "tag_count_meta": 2,
+            "has_large": true,
+            "has_visible_children": false,
+            "media_asset": {
+                "id": 5056745,
+                "created_at": "2021-12-21T08:02:04.132-05:00",
+                "updated_at": "2023-03-02T04:43:15.608-05:00",
+                "md5": "cd91f0000b9574bf142d125a1e886e5c",
+                "file_ext": "png",
+                "file_size": 4527472,
+                "image_width": 2000,
+                "image_height": 2828,
+                "duration": null,
+                "status": "active",
+                "file_key": "nxj2jBet8",
+                "is_public": true,
+                "pixel_hash": "5d34bcf53ddde76fd723f29aae5ebc53",
+                "variants": [
+                    {
+                        "type": "180x180",
+                        "url": "https://cdn.donmai.us/180x180/cd/91/cd91f0000b9574bf142d125a1e886e5c.jpg",
+                        "width": 127,
+                        "height": 180,
+                        "file_ext": "jpg"
+                    },
+                    {
+                        "type": "360x360",
+                        "url": "https://cdn.donmai.us/360x360/cd/91/cd91f0000b9574bf142d125a1e886e5c.jpg",
+                        "width": 255,
+                        "height": 360,
+                        "file_ext": "jpg"
+                    },
+                    {
+                        "type": "720x720",
+                        "url": "https://cdn.donmai.us/720x720/cd/91/cd91f0000b9574bf142d125a1e886e5c.webp",
+                        "width": 509,
+                        "height": 720,
+                        "file_ext": "webp"
+                    },
+                    {
+                        "type": "sample",
+                        "url": "https://cdn.donmai.us/sample/cd/91/sample-cd91f0000b9574bf142d125a1e886e5c.jpg",
+                        "width": 850,
+                        "height": 1202,
+                        "file_ext": "jpg"
+                    },
+                    {
+                        "type": "original",
+                        "url": "https://cdn.donmai.us/original/cd/91/cd91f0000b9574bf142d125a1e886e5c.png",
+                        "width": 2000,
+                        "height": 2828,
+                        "file_ext": "png"
+                    }
+                ]
+            },
+            "tag_string_general": "1girl animal_ears black_eyes black_hair coat grabbing_own_breast hair_ornament hairband holding holding_mask japanese_clothes long_hair looking_at_viewer mask ponytail smile solo",
+            "tag_string_character": "kuon_(utawarerumono)",
+            "tag_string_copyright": "utawarerumono utawarerumono:_itsuwari_no_kamen",
+            "tag_string_artist": "shirokuro_neko_(ouma_haruka)",
+            "tag_string_meta": "absurdres highres",
+            "file_url": "https://cdn.donmai.us/original/cd/91/cd91f0000b9574bf142d125a1e886e5c.png",
+            "large_file_url": "https://cdn.donmai.us/sample/cd/91/sample-cd91f0000b9574bf142d125a1e886e5c.jpg",
+            "preview_file_url": "https://cdn.donmai.us/180x180/cd/91/cd91f0000b9574bf142d125a1e886e5c.jpg"
+        },
+        "family_group": null,
+        "tags": [
+            "1girl",
+            "absurdres",
+            "animal_ears",
+            "black_eyes",
+            "black_hair",
+            "coat",
+            "grabbing_own_breast",
+            "hair_ornament",
+            "hairband",
+            "highres",
+            "holding",
+            "holding_mask",
+            "japanese_clothes",
+            "kuon_(utawarerumono)",
+            "long_hair",
+            "looking_at_viewer",
+            "mask",
+            "ponytail",
+            "shirokuro_neko_(ouma_haruka)",
+            "smile",
+            "solo",
+            "utawarerumono",
+            "utawarerumono:_itsuwari_no_kamen"
+        ],
+        "tags_class": {
+            "1girl": "general",
+            "animal_ears": "general",
+            "black_eyes": "general",
+            "black_hair": "general",
+            "coat": "general",
+            "grabbing_own_breast": "general",
+            "hair_ornament": "general",
+            "hairband": "general",
+            "holding": "general",
+            "holding_mask": "general",
+            "japanese_clothes": "general",
+            "long_hair": "general",
+            "looking_at_viewer": "general",
+            "mask": "general",
+            "ponytail": "general",
+            "smile": "general",
+            "solo": "general",
+            "kuon_(utawarerumono)": "character",
+            "utawarerumono": "copyright",
+            "utawarerumono:_itsuwari_no_kamen": "copyright",
+            "shirokuro_neko_(ouma_haruka)": "artist",
+            "absurdres": "meta",
+            "highres": "meta"
+        }
+    },
+    "backup_urls": [
+        "https://i.pximg.net/img-original/img/2020/08/11/12/41/43/83599609_p0.png"
+    ]
+}
+```
+
+</details>
+
+## Documentation
 
 + [Tutorials](docs/tutorials.md): A detailed tutorial about how to set up configurations, construct a image crawler and downloading images by keywords / tags from Danbooru.
 + [Notes for tasks](docs/notes_for_tasks.md): Including notes and examples for every supported sites and crawling tasks.
-+ [Building a crawler](docs/building_a_crawler.md): Providing extra information about the structure of this project and information of usable classes and functions.
++ [Classes and Functions](docs/classes_and_functions.md): Providing extra information about the structure of this project and information of usable classes and functions.

@@ -74,14 +74,14 @@ class TwitterKeywordMediaParser(KeywordParser):
     # Generate keyword string from keyword tree
     def __build_keyword_str(self, tree: KeywordLogicTree) -> str:
         # Generate standard keyword string
-        if isinstance(tree.son1, str):
-            res1 = tree.son1
+        if isinstance(tree.lchild, str):
+            res1 = tree.lchild
         else:
-            res1 = self.__build_keyword_str(tree.son1)
-        if isinstance(tree.son2, str):
-            res2 = tree.son2
+            res1 = self.__build_keyword_str(tree.lchild)
+        if isinstance(tree.rchild, str):
+            res2 = tree.rchild
         else:
-            res2 = self.__build_keyword_str(tree.son2)
+            res2 = self.__build_keyword_str(tree.rchild)
 
         if tree.logic_operator == "AND":
             return f'({res1} {res2})'

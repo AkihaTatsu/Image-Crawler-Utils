@@ -314,7 +314,7 @@ class Downloader:
         Dataclasses will be displayed in a neater way.
         """
         
-        print_logging_msg("debug", "========== Current Downloader Config ==========")
+        print_logging_msg("========== Current Downloader Config ==========", "debug")
 
         print('\nBasic Info:')
         try:
@@ -322,7 +322,7 @@ class Downloader:
             print(f"  - Store path: {self.store_path}")
             print(f"  - Absolute store path: {os.path.abspath(self.store_path)}")
         except Exception as e:
-            print_logging_msg("error", f"Basic Info missing because {e}!\n{traceback.format_exc()}")
+            print_logging_msg(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
 
         print('\nImage downloading info:')
         try:
@@ -330,11 +330,11 @@ class Downloader:
             print(f"  - Number of images to be downloaded: {len(filtered_ordinals_list)}")
             print(f"  - Number of images to be skipped: {len(skipped_ordinals_list)}")
         except Exception as e:
-            print_logging_msg("error", f"Image downloading info has an error because {e}!\n{traceback.format_exc()}")
+            print_logging_msg(f"Image downloading info has an error because {e}!\n{traceback.format_exc()}", "error")
 
         print('')
-        print_logging_msg("debug", "CrawlerSettings used:")
+        print_logging_msg("CrawlerSettings used:", "debug")
         self.crawler_settings.display_all_configs()
             
         print('')
-        print_logging_msg("debug", "========== Config Display Ending ==========")
+        print_logging_msg("========== Config Display Ending ==========", "debug")

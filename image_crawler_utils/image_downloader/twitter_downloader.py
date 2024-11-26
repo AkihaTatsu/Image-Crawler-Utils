@@ -192,7 +192,7 @@ def twitter_download_image_from_status(
     Parameters:
         url (str): The URL of the image to download.
         image_name (str): Name of image to be stored.
-        download_config (image_crawler_utils.config.DownloadConfig): Comprehensive download config.
+        download_config (image_crawler_utils.configs.DownloadConfig): Comprehensive download config.
         log (config.Log): The logger.
         store_path (str): Path of image to be stored.
         session (requests.Session): Session of requests. Can contain cookies.

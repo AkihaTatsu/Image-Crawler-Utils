@@ -12,9 +12,11 @@ Image Crawler Utils
 
 ## 关于本项目
 
-一个**相对可自定义**的图像爬取框架，允许使用多线程方法下载图像及其信息。
+一个**相对可自定义**的图像爬取框架，允许使用多线程方法下载图像及其信息。如下GIF为运行[样例](../examples/example.py)在控制台上得到的结果：
 
-同时，此框架内包含数个有助于更好地构建自定义图像爬取程序的轮子。
+![](example.gif)
+
+同时，此框架内包含数个有助于更好地构建自定义图像爬取程序的[类与函数（English）](classes_and_functions.md)。
 
 **请遵循robots.txt所设定的爬取程序要求，并在爬取时自觉设置较低的线程数和较高的延迟时间。过于频繁的请求和巨大的下载流量可能会导致IP地址被封禁或账号被暂停。**
 
@@ -23,7 +25,7 @@ Image Crawler Utils
 建议通过以下命令安装：
 
 ```Default
-pip install -i https://test.pypi.org/simple/ image-crawler-utils
+pip install image-crawler-utils
 ```
 
 + 需要`Python >= 3.9`环境。
@@ -50,9 +52,10 @@ pip install -i https://test.pypi.org/simple/ image-crawler-utils
     + 从搜索结果中下载所有的图片
     + 下载某一用户发布的所有图片
 + 日志记录爬取程序的操作到控制台以及（可选的）文件中。
-+ 使用`tqdm`进度条表示爬取程序的进度。
-+ 保存或加载爬取的设置。
-+ 保存或加载所有图片的信息，以便于未来的爬取。
++ 使用`tqdm`进度条表示爬取程序的进度（包含对Jupyter notebook的支持）。
++ 保存或读取爬取的设置与配置。
++ 保存或读取所有图片的信息，以便于未来的爬取。
++ 获取及管理部分网站的cookies，包括对其进行保存与读取。
 + 数个用于设计自定义图片爬取程序的类和函数。
 
 ## 如何使用
@@ -164,8 +167,177 @@ downloader = Downloader(
 downloader.run()
 ```
 
+在保存的`image_info_list.json`中，一张图片的信息如下所示：
+
+<details>
+<summary><b>ImageInfo Structure in JSON</b></summary>
+
+```json
+{
+    "url": "https://cdn.donmai.us/original/cd/91/cd91f0000b9574bf142d125a1e886e5c.png",
+    "name": "Danbooru 4994142 cd91f0000b9574bf142d125a1e886e5c.png",
+    "info": {
+        "info": {
+            "id": 4994142,
+            "created_at": "2021-12-21T08:02:13.706-05:00",
+            "uploader_id": 772564,
+            "score": 10,
+            "source": "https://i.pximg.net/img-original/img/2020/08/11/12/41/43/83599609_p0.png",
+            "md5": "cd91f0000b9574bf142d125a1e886e5c",
+            "last_comment_bumped_at": null,
+            "rating": "s",
+            "image_width": 2000,
+            "image_height": 2828,
+            "tag_string": "1girl absurdres animal_ears black_eyes black_hair coat grabbing_own_breast hair_ornament hairband highres holding holding_mask japanese_clothes kuon_(utawarerumono) long_hair looking_at_viewer mask ponytail shirokuro_neko_(ouma_haruka) smile solo utawarerumono utawarerumono:_itsuwari_no_kamen",
+            "fav_count": 10,
+            "file_ext": "png",
+            "last_noted_at": null,
+            "parent_id": null,
+            "has_children": false,
+            "approver_id": null,
+            "tag_count_general": 17,
+            "tag_count_artist": 1,
+            "tag_count_character": 1,
+            "tag_count_copyright": 2,
+            "file_size": 4527472,
+            "up_score": 10,
+            "down_score": 0,
+            "is_pending": false,
+            "is_flagged": false,
+            "is_deleted": false,
+            "tag_count": 23,
+            "updated_at": "2024-07-10T12:21:31.782-04:00",
+            "is_banned": false,
+            "pixiv_id": 83599609,
+            "last_commented_at": null,
+            "has_active_children": false,
+            "bit_flags": 0,
+            "tag_count_meta": 2,
+            "has_large": true,
+            "has_visible_children": false,
+            "media_asset": {
+                "id": 5056745,
+                "created_at": "2021-12-21T08:02:04.132-05:00",
+                "updated_at": "2023-03-02T04:43:15.608-05:00",
+                "md5": "cd91f0000b9574bf142d125a1e886e5c",
+                "file_ext": "png",
+                "file_size": 4527472,
+                "image_width": 2000,
+                "image_height": 2828,
+                "duration": null,
+                "status": "active",
+                "file_key": "nxj2jBet8",
+                "is_public": true,
+                "pixel_hash": "5d34bcf53ddde76fd723f29aae5ebc53",
+                "variants": [
+                    {
+                        "type": "180x180",
+                        "url": "https://cdn.donmai.us/180x180/cd/91/cd91f0000b9574bf142d125a1e886e5c.jpg",
+                        "width": 127,
+                        "height": 180,
+                        "file_ext": "jpg"
+                    },
+                    {
+                        "type": "360x360",
+                        "url": "https://cdn.donmai.us/360x360/cd/91/cd91f0000b9574bf142d125a1e886e5c.jpg",
+                        "width": 255,
+                        "height": 360,
+                        "file_ext": "jpg"
+                    },
+                    {
+                        "type": "720x720",
+                        "url": "https://cdn.donmai.us/720x720/cd/91/cd91f0000b9574bf142d125a1e886e5c.webp",
+                        "width": 509,
+                        "height": 720,
+                        "file_ext": "webp"
+                    },
+                    {
+                        "type": "sample",
+                        "url": "https://cdn.donmai.us/sample/cd/91/sample-cd91f0000b9574bf142d125a1e886e5c.jpg",
+                        "width": 850,
+                        "height": 1202,
+                        "file_ext": "jpg"
+                    },
+                    {
+                        "type": "original",
+                        "url": "https://cdn.donmai.us/original/cd/91/cd91f0000b9574bf142d125a1e886e5c.png",
+                        "width": 2000,
+                        "height": 2828,
+                        "file_ext": "png"
+                    }
+                ]
+            },
+            "tag_string_general": "1girl animal_ears black_eyes black_hair coat grabbing_own_breast hair_ornament hairband holding holding_mask japanese_clothes long_hair looking_at_viewer mask ponytail smile solo",
+            "tag_string_character": "kuon_(utawarerumono)",
+            "tag_string_copyright": "utawarerumono utawarerumono:_itsuwari_no_kamen",
+            "tag_string_artist": "shirokuro_neko_(ouma_haruka)",
+            "tag_string_meta": "absurdres highres",
+            "file_url": "https://cdn.donmai.us/original/cd/91/cd91f0000b9574bf142d125a1e886e5c.png",
+            "large_file_url": "https://cdn.donmai.us/sample/cd/91/sample-cd91f0000b9574bf142d125a1e886e5c.jpg",
+            "preview_file_url": "https://cdn.donmai.us/180x180/cd/91/cd91f0000b9574bf142d125a1e886e5c.jpg"
+        },
+        "family_group": null,
+        "tags": [
+            "1girl",
+            "absurdres",
+            "animal_ears",
+            "black_eyes",
+            "black_hair",
+            "coat",
+            "grabbing_own_breast",
+            "hair_ornament",
+            "hairband",
+            "highres",
+            "holding",
+            "holding_mask",
+            "japanese_clothes",
+            "kuon_(utawarerumono)",
+            "long_hair",
+            "looking_at_viewer",
+            "mask",
+            "ponytail",
+            "shirokuro_neko_(ouma_haruka)",
+            "smile",
+            "solo",
+            "utawarerumono",
+            "utawarerumono:_itsuwari_no_kamen"
+        ],
+        "tags_class": {
+            "1girl": "general",
+            "animal_ears": "general",
+            "black_eyes": "general",
+            "black_hair": "general",
+            "coat": "general",
+            "grabbing_own_breast": "general",
+            "hair_ornament": "general",
+            "hairband": "general",
+            "holding": "general",
+            "holding_mask": "general",
+            "japanese_clothes": "general",
+            "long_hair": "general",
+            "looking_at_viewer": "general",
+            "mask": "general",
+            "ponytail": "general",
+            "smile": "general",
+            "solo": "general",
+            "kuon_(utawarerumono)": "character",
+            "utawarerumono": "copyright",
+            "utawarerumono:_itsuwari_no_kamen": "copyright",
+            "shirokuro_neko_(ouma_haruka)": "artist",
+            "absurdres": "meta",
+            "highres": "meta"
+        }
+    },
+    "backup_urls": [
+        "https://i.pximg.net/img-original/img/2020/08/11/12/41/43/83599609_p0.png"
+    ]
+}
+```
+
+</details>
+
 ## 文档
 
-+ [教程](tutorials_zh.md): 关于如何设置爬取程序参数，完成一个爬取程序程序，并从Danbooru上根据关键词 / 标签下载图片的详细教程。
-+ [网站任务说明（English）](notes_for_tasks.md): 包含每个支持的网站和爬取任务的说明与样例。
-+ [构建一个爬取程序（English）](building_a_crawler.md): 提供此项目内各结构、可用类及函数的信息。
++ [教程](tutorials_zh.md)：关于如何设置爬取程序参数，完成一个爬取程序程序，并从Danbooru上根据关键词 / 标签下载图片的详细教程。
++ [网站任务说明（English）](notes_for_tasks.md)：包含每个支持的网站和爬取任务的说明与样例。
++ [类与函数（English）](classes_and_functions.md)：提供此项目内各结构、可用类及函数的信息。

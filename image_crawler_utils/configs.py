@@ -148,7 +148,7 @@ class DownloadConfig:
 
 
     @property
-    def randomized_thread_delay(self) -> float:
+    def result_thread_delay(self) -> float:
         if self.randomize_delay:
             return random.random() * self.thread_delay
         else:
@@ -156,7 +156,7 @@ class DownloadConfig:
 
     
     @property
-    def randomized_fail_delay(self) -> float:
+    def result_fail_delay(self) -> float:
         if self.randomize_delay:
             return random.random() * self.fail_delay
         else:

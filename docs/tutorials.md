@@ -67,7 +67,7 @@ crawler_settings = CrawlerSettings(
   + `image_num`
   + `capacity`
   + `page_num`
-    + Please refer to the [CapacityCountConfig()](#capacitycountconfig) chapter. These parameters control the number of images, pages and total size of images when crawling.
+    + Please refer to the [CapacityCountConfig()](#capacitycountconfig) chapter for their meaning. These parameters control the number of images, pages and total size of images when crawling.
     + Leave any of them blank will use the default value of the corresponding parameter in CapacityCountConfig.
     + It is also acceptable to pass a CapacityCountConfig class into the `capacity_count_config` parameter of a CrawlerSettings class. It will overwrite the parameters above, like:
       
@@ -95,11 +95,11 @@ crawler_settings = CrawlerSettings(
   + `max_download_time`
   + `retry_time`
   + `overwrite_images`
-    + Please refer to the [DownloadConfig()](#downloadconfig) chapter. These parameters control settings relating to downloading pages and images.
+    + Please refer to the [DownloadConfig()](#downloadconfig) chapter for their meaning. These parameters control settings relating to downloading pages and images.
     + Leave any of them blank will use the default value of the corresponding parameter in DownloadConfig.
     + It is also acceptable to pass a DownloadConfig class into the `download_config` parameter of a CrawlerSettings class. It will overwrite the parameters above.
   + `debug_config`: A `image_crawler_utils.configs.DebugConfig` class, which controls the displaying level of messages on the console. Please refer to the [DebugConfig()](#debugconfig) chapter. 
-+ `extra_configs`: This optional `dict` is not used in any of the supported sites and crawling tasks, as it is reserved for developing customized image crawler.
++ `extra_configs`: This optional `dict` is not used in any of the supported sites and crawling tasks, as it is reserved for developing your custom image crawler.
 
 It is recommended to add a logging file when running the crawler, as the message displayed on the console is simplified and usually not complete. After you set up a CrawlerSettings, use `.set_logging_file()` to set a logging file handler to current settings:
 
@@ -125,7 +125,7 @@ crawler_settings.set_logging_file("test.log")
 
 You can use `.display_all_configs()` to display and check all configs in current CrawlerSettings.
 
-These attribute functions are providedx:
+These attribute functions are provided:
 
 + `.connectivity_test(url: str)` can check whether the url is accessible with current settings. Logging messages will be recorded on the console or in the file according to your settings.
   + Returns `True` when successful, and `False` when failed. 
@@ -314,10 +314,10 @@ download_config = DownloadConfig(
     + SOCKS type: `{'https': 'socks5://127.0.0.1:7890'}`
     + If you input `'https'` proxies, `'http'` proxies will be automatically generated.
     + **ATTENTION:** Using usernames and passwords is currently not supported.
-+ `thread_delay`: Delaying time before every thread starts.
++ `thread_delay`: Delaying time (seconds) before every thread starts.
   + Both fetching webpages and downloading images will use this parameter.
   + Some Parsers may use different parameters to control their delaying time. Please refer to [notes for tasks](notes_for_tasks.md) for detailed information.
-+ `fail_delay`: Delaying time after every failure.
++ `fail_delay`: Delaying time (seconds) after every failure.
   + Both fetching webpages and downloading images will use this parameter.
   + Some Parsers may use different parameters to control their delaying time when a failure happens. Please refer to [notes for tasks](notes_for_tasks.md) for detailed information.
 + `randomize_delay`: Randomize `thread_delay` and `fail_delay` between 0 and their values.
@@ -371,7 +371,7 @@ new_config = DownloadConfig()
 load_dataclass(new_config, "download_config.pkl")
 ```
 
-+ `save_dataclass()` will save the dataclass into a file.
++ `save_dataclass()` will save the dataclass (config) into a file.
   + Set `file_type` parameter to `json` or `pkl` will force the function to save the dataclass (config) into this type, or leaving this parameter blank will cause the funtion to determine the file type according to `file_name`.
     + That is, `save_dataclass(dataclass, 'foo.json')` works the same as `save_dataclass(dataclass, 'foo', 'json')`.
     + `.json` is suggested when your dataclasses (configs) do not include objects that cannot be JSON-serialized (e.g. a function), while serialized data file `.pkl` can support most data types but the saved file is not readable.
@@ -513,8 +513,9 @@ Several attributes are provided for different uses:
   session.cookies.update(cookies.cookies_dict)
   ```
 
-+ `.cookies_selenium`: Cookies in `list` form, can be used in selenium-related occasions.
++ `.cookies_selenium`: Cookies in `list[dict]` form, can be used in selenium-related occasions.
   + **ATTENTION:** If you create a Cookies class through `str` or `dict`, then `.cookies_selenium` CANNOT be directly used in selenium webdrivers (some information is missing). `.update_selenium_cookies()` is provided in such occasions.
++ `.cookies_nodriver`: Cookies in `list[nodriver.cdp.network.Cookie]` form, can be used in nodriver-related occasions.
 + `.update_selenium_cookies()`: Update cookies in selenium webdrivers. Input should be a selenium-type cookies (a `list[dict]`), and the function will return a new selenium-type cookies with information stored in Cookies class added. If you create a Cookies class through `str` or `dict`, this function can be used to add such Cookies to selenium webdrivers.
   + The cookies generated without a domain will be given the domain appeared the most in the input cookies.
 
@@ -535,7 +536,7 @@ Several attributes are provided for different uses:
 
 + `.update_nodriver_cookies()`: Update cookies in nodriver instances. Input should be a nodriver-type cookies (a `list[nodriver.cdp.network.Cookie]`), and the function will return a new nodriver-type cookies with information stored in Cookies class added.
   + Cookies from nodriver can be generated by `browser.cookies.get_all()`, where `browser` is a `nodriver.Browser` instance.
-  + If you create a Cookies class through `str` or `dict`, DO NOT directly use this function to set cookies for nodriver instances. Use `update_nodriver_browser_cookies()` mentioned below instead.
+  + If you create a Cookies class through `str` or `dict`, **DO NOT** directly use this function to set cookies for nodriver instances. Use `update_nodriver_browser_cookies()` mentioned below instead.
   + The cookies generated without a domain will be given the domain appeared the most in the input cookies.
 + `.is_none()`: Returns a bool telling whether current Cookies is empty.
   + If Cookies is created directly (like `cookies = Cookies()`), then `.is_none()` will return `True`. Otherwise it will return `False`.
@@ -608,7 +609,7 @@ parser = DanbooruKeywordParser(
 + `crawler_settings`: The CrawlerSettings used in this parser.
 + `station_url`: The URL of the main page of a website.
   + This parameter works when several websites use the same structure. For example, [yande.re](https://yande.re/) and [konachan.com](https://konachan.com/) both use Moebooru to build their websites, and this parameter must be filled to deal with these sites respectively.
-  + For websites like [Pixiv](https://www.pixiv.net/), as no other website uses its structure, this parameter is omitted.
+  + For websites like [Pixiv](https://www.pixiv.net/), as no other website uses its structure, this parameter has already been initialized and do not need to be filled.
 + `standard_keyword_string`: Query keyword string using standard syntax. See [Standard Syntax for Keywords](#standard-syntax-for-keywords) chapter for detailed instructions.
 + `keyword_string`: If you want to directly specify the keywords used in searching, set `keyword_string` to a custom non-empty string. It will OVERWRITE `standard_keyword_string`.
   + For example, set `keyword_string` to `"kuon_(utawarerumono) rating:safe"` in DanbooruKeywordParser means searching directly with this string in Danbooru, and its standard keyword string equivalent is `"kuon_(utawarerumono) AND rating:safe"`.
@@ -640,8 +641,10 @@ As different stations may have different syntaxes for keyword searching, Image C
   + `NOT` / `!` means searching images without this keyword / tag.
   + `[` and `]` works like brackets in normal expressions, increasing the priority of the keyword / tag string included.
     + It is STRONGLY recommended to use `[` and `]` in order to avoid ambiguity.
-    + **ATTENTION:** `(` and `)` is considered part of the keywords / tags instead of a logic symbol.
-  + Priority of logic symbols is the same as C language, that is: **OR < AND < NOT < [ = ]**
+    + **ATTENTION:** `(` and `)` are considered part of the keywords / tags instead of a logic symbol.
+  + Priority of logic symbols is the same as C language, which is: **OR < AND < NOT < [ = ]**
++ Escape characters: Add `\` before any of the characters above except `(` and `)`to represent itself (like `\&`), while `\\` represents `\`.
+  + **ATTENTION:** Python may not regard combinations like `\[` and `\]` as valid escape characters, and you should consider altering the string in this case.
 + If two keywords / tags have no logic symbols in between, they will be considered one keyword / tag connected by `_`. For example, `kuon (utawarerumono)` works the same as `kuon_(utawarerumono)`.
 + Keyword wildcards: `*` can be replaced with any string (include empty string).
   + `*key` means all keywords / tags that end with `key`. For example, `*dress` can match `dress` and `chinadress`.
@@ -859,7 +862,7 @@ A JSON example of ImageInfo generated by DanbooruKeywordParser from [image ID 49
 
 </details>
 
-If you want to get the tags of this image (assume its `image_info` is a ImageInfo class), you should use `image_info.info["tags"]` instead of `image_info["info"]["tags"]` or `image_info.info.tags`.
+If you want to get the tags of this image (assume its `image_info` is an ImageInfo class), you should use `image_info.info["tags"]` instead of `image_info["info"]["tags"]` or `image_info.info.tags`.
 
 ## Running Downloader()
 
