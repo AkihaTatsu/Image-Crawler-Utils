@@ -622,7 +622,7 @@ parser = DanbooruKeywordParser(
     + `"File"`或`"file"`：如果源URL形似一个文件（例如`https://foo.bar/image.png`），或源URL为若干个特殊的网址（例如Pixiv或Twitter / X的推文）之一，则尝试优先从此URL下载。
     + `"None"`或`"none"`：不尝试优先从任何源URL下载。
   + 源URL和Danbooru的URL都将存储在ImageInfo类中，并在下载时均会被检查使用。这个参数只控制下载时使用URL的优先级。
-  + 设置为除`"None"` / `"none"`之外的等级可以减少Danbooru服务器经受的压力，但会花费更长的时间（由于源URL可能无法直接连接，或已经失效）
+  + 设置为除`"None"` / `"none"`之外的等级可以减少Danbooru服务器经受的压力，但会花费更长的时间（由于源URL可能无法直接连接，或已经失效）。
 + `use_keyword_include`：如果此参数设置为`True`，DanbooruKeywordParser会尝试寻找具有小于等于2个关键词 / 标签（Danbooru对无账号搜索的限制）的、包含所有要查找图片的关键词 / 标签子组，并从中选择对应页面数量最少的子组。
   + 只有在`standard_keyword_string`被启用时有效。如果指定了`keyword_string`，此参数被忽略。
   + 例如，如果`standard_keyword_string`被设置为`"kuon_(utawarerumono) AND rating:safe OR utawarerumono"`，则解析器会分别以`"kuon_(utawarerumono) OR utawarerumono"`和`"rating:safe OR utawarerumono"`进行搜索，并选择有着最少页面数的一组作为关键词字符串用于之后的搜索中。
@@ -640,7 +640,7 @@ parser = DanbooruKeywordParser(
     + 此处**强烈**建议使用`[`和`]`以避免歧义。
     + **注意：** `(`和`)`被视作关键词 / 标签的一部分，而非一个逻辑符号。
   + 逻辑符号的优先级遵循C语言优先级，即：**OR < AND < NOT < [ = ]**
-+ 转义字符：用`\`加上以上除`(`、`)`之外的任意一个符号（如`\&`）即可表示其符号本身，同时`\\`可表示`\`
++ 转义字符：用`\`加上以上除`(`、`)`之外的任意一个符号（如`\&`）即可表示其符号本身，同时`\\`可表示`\`。
   + **注意：** Python本身可能不认为类似`\[`、`\]`的字符组合是合法的转义字符，因此需要视情况将原字符串进行相应调整。
 + 如果两个关键词 / 标签之间没有任何逻辑符号连接，则其将会被视为用`_`连接的同一个关键词。例如，`kuon (utawarerumono)`等效于`kuon_(utawarerumono)`。
 + 关键词的通配符：`*`可以替换为任何一个字符串（包括空字符串）。
