@@ -448,7 +448,7 @@ Its attributes include:
 + `UserAgent.user_agents`: A `dict` that includes all user agents, including all the user agents in the former attributes.
 + `UserAgent.random_agent_with_name()`: Returns a random agent with a certain name in its name string.
   + For example: `UserAgent.random_agent_with_name("Chrome")` will select a random user agent with `"Chrome"` in its name, like `{"Chrome - Windows": "A Chrome UA"}` might be selected while `{"Safari 5.1 - MAC": "A Safari UA"}` will not be selected.
-  + Both input string and the name will be in lowercase when compared. That is, `UserAgent.random_agent_with_name("Chrome")` works the same as `UserAgent.random_agent_with_name("chrome")`, while `{"Chrome UA": "UA"}` and `{"chrome ua": "UA"}` are the same as the name of user agents.
+  + Both input string and the name will be in lowercase when compared. That is, `UserAgent.random_agent_with_name("Chrome")` works the same as `UserAgent.random_agent_with_name("chrome")`, while `{"Chrome UA": "UA"}` and `{"chrome ua": "UA"}` are the same in the case of the name of user agents.
 + `UserAgent.random_pc_agent()`: Returns a random PC user agent.
 + `UserAgent.random_mobile_agent()`: Returns a random mobile user agent.
 + `UserAgent.random_agent()`: Returns a random user agent.
