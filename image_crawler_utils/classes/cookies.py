@@ -83,13 +83,14 @@ class Cookies:
         
 
     @classmethod
-    def load_from_json(cls, json_file: str, log: Log=Log()) -> Cookies:
+    def load_from_json(cls, json_file: str, encoding: str='UTF-8', log: Log=Log()) -> Cookies:
         """
         Load the Cookies from a json file.
         ONLY WORKS IF the info can be JSON serialized.
 
         Parameters:
             json_file (str): Name / path of json file.
+            encoding (str): Encoding of JSON file.
             log (crawler_utils.log.Log, optional): Logging config.
 
         Returns:
@@ -97,7 +98,7 @@ class Cookies:
         """
         
         try:
-            with open(json_file, "r", encoding='UTF-8') as f:
+            with open(json_file, "r", encoding=encoding) as f:
                 new_cls = cls.create_by(json.load(f))            
 
             log.info(f'Cookies has been loaded from "{os.path.abspath(json_file)}"')
@@ -108,12 +109,13 @@ class Cookies:
             return None
         
 
-    def save_to_json(self, json_file: str, log: Log=Log()) -> Optional[tuple[str, str]]:
+    def save_to_json(self, json_file: str, encoding: str='UTF-8', log: Log=Log()) -> Optional[tuple[str, str]]:
         """
         Save the Cookies into a json file.
 
         Parameters:
             json_file (str): Name / path of json file. (Suffix is optional.)
+            encoding (str): Encoding of JSON file.
             log (crawler_utils.log.Log, optional): Logging config.
             
         Returns:
@@ -125,7 +127,7 @@ class Cookies:
         f_name = os.path.join(path, f"{filename}.json")
         f_name = f_name.replace(".json.json", ".json")  # If .json is already contained in json_file, skip it
         try:
-            with open(f_name, "w", encoding='UTF-8') as f:
+            with open(f_name, "w", encoding=encoding) as f:
                 json.dump(self.cookies_selenium, f, indent=4, ensure_ascii=False)
                 log.info(f'Cookies has been saved at "{os.path.abspath(f_name)}"')
                 return f_name, os.path.abspath(f_name)

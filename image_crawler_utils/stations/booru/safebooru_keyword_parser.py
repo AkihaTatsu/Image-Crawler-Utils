@@ -7,7 +7,7 @@ import requests
 
 from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
 from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
-from image_crawler_utils.utils import custom_tqdm
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
 
 from .constants import GELBOORU_IMAGE_NUM_PER_GALLERY_PAGE, GELBOORU_IMAGE_NUM_PER_JSON, MAX_SAFEBOORU_JSON_PAGE_NUM, SPECIAL_WEBSITES
 
@@ -54,7 +54,7 @@ class SafebooruKeywordParser(KeywordParser):
         self.use_keyword_include = use_keyword_include
 
 
-    def run(self):
+    def run(self) -> list[ImageInfo]:
         with requests.Session() as session:
             if not self.cookies.is_none():
                 session.cookies.update(self.cookies.cookies_dict)
@@ -116,10 +116,8 @@ class SafebooruKeywordParser(KeywordParser):
         min_page_num = None
 
         self.crawler_settings.log.info("Testing the page num of keyword (include) groups to find the one with fewest pages.")
-        with custom_tqdm.trange(
-            len(keyword_strings),
-            desc="Requesting pages",
-        ) as pbar:
+        with CustomProgress(transient=True) as progress:
+            task = progress.add_task(description="Requesting pages:", total=len(keyword_strings))
             for string in keyword_strings:
                 self.crawler_settings.log.debug(f'Testing the page num of keyword string: {string}')
                 self.keyword_string = string
@@ -128,7 +126,9 @@ class SafebooruKeywordParser(KeywordParser):
                 if min_page_num is None or page_num < min_page_num:
                     min_page_num = page_num
                     min_string = string
-                pbar.update()
+                progress.update(task, advance=1)
+
+            progress.update(task, description="[green]Requesting pages finished!")
                 
         self.keyword_string = min_string
         self.crawler_settings.log.info(f'The keyword string the parser will use is "{self.keyword_string}" which has {min_page_num} {"pages" if min_page_num > 1 else "page"}.')
@@ -180,14 +180,13 @@ class SafebooruKeywordParser(KeywordParser):
             last_json_page_num = MAX_SAFEBOORU_JSON_PAGE_NUM  # Actually from 0 to MAX_SAFEBOORU_JSON_PAGE_NUM, i.e. MAX_SAFEBOORU_JSON_PAGE_NUM + 1 pages
 
         self.crawler_settings.log.info("Determining the last json page num...")
-        with custom_tqdm.tqdm(
-            bar_format=r'{desc}',
-            leave=False,
-        ) as pbar:
+        with ProgressGroup(panel_title="Determining Last [yellow]Webpage[reset] Number") as progress_group:
+            progress = progress_group.main_text_only_bar
+            task = progress.add_task(description=f"Current total json page num: [repr.number]{last_json_page_num}[reset], Current last json page pid: [repr.number]{last_json_page_num - 1}[reset]")
             while True:
-                pbar.set_description_str(f"Current total json page num: {last_json_page_num}, Current last json page pid: {last_json_page_num - 1}")
                 last_json_page_url = parse.quote(f"{self.station_url}index.php?page=dapi&s=post&q=index&json=1&tags={self.keyword_string}&pid={last_json_page_num - 1}", safe='/:?=&')
                 content = self.request_page_content(last_json_page_url, session=session)
+                progress.update(task, description=f"Current total json page num: [repr.number]{last_json_page_num}[reset], Current last json page pid: [repr.number]{last_json_page_num - 1}[reset]")
                 if 'id' not in content:  # Last page does not exist
                     last_json_page_num -= 1
                 else:
@@ -228,10 +227,9 @@ class SafebooruKeywordParser(KeywordParser):
         self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
         parent_id_list = []
-        with custom_tqdm.trange(
-            len(page_content_list),
-            desc="Parsing image info pages",
-        ) as pbar:
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(page_content_list))
             for content in page_content_list:
                 image_info_dict = json.loads(content)  # Safebooru style
                 for info in image_info_dict:
@@ -313,7 +311,9 @@ class SafebooruKeywordParser(KeywordParser):
                             info=new_info,
                         ))
                
-                pbar.update()
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
                 
         self.parent_id_list = list(set(parent_id_list))
         self.image_info_list = image_info_list

@@ -1,5 +1,4 @@
 import os
-import time
 import re
 
 import requests
@@ -12,7 +11,8 @@ import traceback
 from image_crawler_utils import Cookies, update_nodriver_browser_cookies
 from image_crawler_utils.configs import DownloadConfig
 from image_crawler_utils.log import Log
-from image_crawler_utils.utils import custom_tqdm, check_dir, set_up_nodriver_browser
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import check_dir, set_up_nodriver_browser
 
 from .core_downloader import download_image
 
@@ -24,81 +24,86 @@ async def __get_image_from_status(
     download_config: DownloadConfig=DownloadConfig(),
     log: Log=Log(),
     session: Optional[requests.Session]=requests.Session(),
-):
-    with custom_tqdm.trange(
-        3,
-        desc=f'Loading browser components...',
-        leave=False,
-    ) as pbar:
-        # Connect once to get cookies
-        try:
-            log.debug(f"Parsing Twitter / X status page: \"{url}\"")
-            browser = await set_up_nodriver_browser(
-                proxies=download_config.result_proxies,
-            )
+    progress_group: Optional[ProgressGroup]=None,
+):    
+    if progress_group is None:  # No father tasks are provided, create an separate progress
+        progress = CustomProgress(has_spinner=True, transient=True)
+        progress.start()
+    else:
+        progress = progress_group.sub_count_bar
 
-            pbar.update()
-            pbar.set_description(f"Requesting Twitter / X status once...")
+    task = progress.add_task(description='Loading browser components...', total=3)
+    # Connect once to get cookies
+    try:
+        log.debug(f"Parsing Twitter / X status page: \"{url}\"")
+        browser = await set_up_nodriver_browser(
+            proxies=download_config.result_proxies,
+        )
 
-            tab = await browser.get(url, new_tab=True)
-            await tab.find('div[id="react-root"]')
-        except Exception as e:
-            browser.stop()
-            raise ConnectionError(f"{e}")
-        
-        # Replace cookies
-        cookies = Cookies.create_by(session.cookies.get_dict())
-        await update_nodriver_browser_cookies(browser, cookies)
+        progress.update(task, advance=1, description="Requesting Twitter / X status once...")
 
-        # Connect twice to get images
-        try:
-            pbar.update()
-            pbar.set_description(f"Requesting Twitter / X status again with cookies...")
+        tab = await browser.get(url, new_tab=True)
+        await tab.find('div[id="react-root"]')
+    except Exception as e:
+        progress.finish_task(task)
+        browser.stop()
+        raise ConnectionError(f"{e}")
+    
+    # Replace cookies
+    cookies = Cookies.create_by(session.cookies.get_dict())
+    await update_nodriver_browser_cookies(browser, cookies)
 
-            await tab.get(url)
-            await tab.scroll_up(1000)  # Sometimes it does not load from the first tweet. Scroll to top in case of this!
-            await tab.sleep()  # Wait until the whole page is fully loaded!
-            # Get main structure
-        except Exception as e:
-            browser.stop()
-            raise ConnectionError(f"{e}")
-        
-        # Check if it is empty
-        try:
-            await tab.find('article[data-testid="tweet"]', timeout=30)  # Try to get a tweet first
-        except:
-            main_structure = await tab.find('div[data-testid="primaryColumn"]')
-            empty_element = None  # Twitter / X page not exist
-            try:
-                empty_element = await main_structure.query_selector('div[data-testid="error-detail"]')
-            finally:
-                if empty_element is not None:
-                    raise FileExistsError("This Twitter / X page does not exist, or not accessible without an account.")
+    # Connect twice to get images
+    try:
+        progress.update(task, advance=1, description="Requesting Twitter / X status again with cookies...")
 
-        # Check if the tweet itself is banned (comment tweets may exist)
+        await tab.get(url)
+        await tab.scroll_up(1000)  # Sometimes it does not load from the first tweet. Scroll to top in case of this!
+        await tab.sleep()  # Wait until the whole page is fully loaded!
+        # Get main structure
+    except Exception as e:
+        progress.finish_task(task)
+        browser.stop()
+        raise ConnectionError(f"{e}")
+    
+    # Check if it is empty
+    try:
+        await tab.find('article[data-testid="tweet"]', timeout=30)  # Try to get a tweet first
+    except:
         main_structure = await tab.find('div[data-testid="primaryColumn"]')
-        banned_element = None  # Twitter / X page banned
+        empty_element = None  # Twitter / X page not exist
         try:
-            banned_element = await main_structure.query_selector('a[href="https:\\/\\/help.twitter.com\\/rules-and-policies\\/notices-on-twitter"]')
+            empty_element = await main_structure.query_selector('div[data-testid="error-detail"]')
         finally:
-            if banned_element is not None:
-                raise FileExistsError("This Twitter / X page does not exist because the status or user violated Twitter / X rules and policies.")
-        
-        # Try parsing image elements
-        try:
-            tweet_element = await main_structure.query_selector('article[data-testid="tweet"]')
-            img_elements = await tweet_element.query_selector_all('img')
-            available_src = [element.attrs['src'] for element in img_elements
-                             if ('src' in element.attrs.keys()
-                                 and "pbs.twimg.com/media" in element.attrs['src'])]
-            if len(available_src) == 0:
-                raise FileNotFoundError("Images not found on Twitter / X status.")
+            if empty_element is not None:
+                raise FileExistsError("This Twitter / X page does not exist, or not accessible without an account.")
 
-            pbar.update()
-            browser.stop()
-        except Exception as e:
-            browser.stop()
-            raise FileNotFoundError(f"{e}")
+    # Check if the tweet itself is banned (comment tweets may exist)
+    main_structure = await tab.find('div[data-testid="primaryColumn"]')
+    banned_element = None  # Twitter / X page banned
+    try:
+        banned_element = await main_structure.query_selector('a[href="https:\\/\\/help.twitter.com\\/rules-and-policies\\/notices-on-twitter"]')
+    finally:
+        if banned_element is not None:
+            raise FileExistsError("This Twitter / X page does not exist because the status or user violated Twitter / X rules and policies.")
+    
+    # Try parsing image elements
+    try:
+        tweet_element = await main_structure.query_selector('article[data-testid="tweet"]')
+        img_elements = await tweet_element.query_selector_all('img')
+        available_src = [element.attrs['src'] for element in img_elements
+                            if ('src' in element.attrs.keys()
+                                and "pbs.twimg.com/media" in element.attrs['src'])]
+        if len(available_src) == 0:
+            raise FileNotFoundError("Images not found on Twitter / X status.")
+
+        progress.finish_task(task)
+        browser.stop()
+    except Exception as e:
+        progress.finish_task(task)
+        browser.stop()
+        raise FileNotFoundError(f"{e}")
+        
         
     return available_src
 
@@ -111,6 +116,7 @@ async def __twitter_download_image_from_status(
     log: Log=Log(),
     store_path: str="./",
     session: Optional[requests.Session]=requests.Session(),
+    progress_group: Optional[ProgressGroup]=None,
     thread_id: int=0,
 ) -> tuple[float, int]:
     
@@ -123,6 +129,7 @@ async def __twitter_download_image_from_status(
                 download_config=download_config,
                 log=log,
                 session=session,
+                progress_group=progress_group,
             )
             break
         except FileExistsError as e:  # Status itself has error (not found, banned, etc.)
@@ -166,6 +173,7 @@ async def __twitter_download_image_from_status(
             log=log,
             store_path=store_path,
             session=session,
+            progress_group=progress_group,
             thread_id=thread_id,
         )
         total_downloaded_size += image_size
@@ -184,6 +192,7 @@ def twitter_download_image_from_status(
     log: Log=Log(),
     store_path: str="./",
     session: Optional[requests.Session]=requests.Session(),
+    progress_group: Optional[ProgressGroup]=None,
     thread_id: int=0,
 ) -> tuple[float, int]:
     """
@@ -196,6 +205,7 @@ def twitter_download_image_from_status(
         log (config.Log): The logger.
         store_path (str): Path of image to be stored.
         session (requests.Session): Session of requests. Can contain cookies.
+        progress_group (image_crawler_utils.progress_bar.ProgressGroup): The Group of Progress bars to be displayed in.
         thread_id (int): Nth thread of image downloading.
 
     Returns:
@@ -210,6 +220,7 @@ def twitter_download_image_from_status(
             log=log,
             store_path=store_path,
             session=session,
+            progress_group=progress_group,
             thread_id=thread_id,
         )
     )

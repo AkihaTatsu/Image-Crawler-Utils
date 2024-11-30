@@ -7,7 +7,8 @@ import nodriver
 
 from image_crawler_utils import Cookies, KeywordParser, CrawlerSettings, ImageInfo, update_nodriver_browser_cookies
 from image_crawler_utils.keyword import KeywordLogicTree
-from image_crawler_utils.utils import custom_tqdm, set_up_nodriver_browser
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import set_up_nodriver_browser
 
 from .search_settings import TwitterSearchSettings
 from .search_status_analyzer import scrolling_to_find_status
@@ -59,7 +60,7 @@ class TwitterKeywordMediaParser(KeywordParser):
         self.headless = headless
 
 
-    def run(self):
+    def run(self) -> list[ImageInfo]:
         if self.cookies.is_none():
             raise ValueError('Cookies cannot be empty!')
         if self.keyword_string is None:
@@ -108,12 +109,10 @@ class TwitterKeywordMediaParser(KeywordParser):
         
         flag_success = False
         for i in range(self.crawler_settings.download_config.retry_times):
-            try:
-                with custom_tqdm.trange(
-                    3,
-                    desc=f'Loading browser components...',
-                    leave=False,
-                ) as pbar:
+            with CustomProgress(has_spinner=True, transient=True) as progress:
+                try:
+                    task = progress.add_task(total=3, description='Loading browser components...')
+                    
                     # Connect once to get cookies
                     try:
                         self.crawler_settings.log.debug(f"Connecting to twitter searching result: \"{search_status_url}\"")
@@ -123,8 +122,7 @@ class TwitterKeywordMediaParser(KeywordParser):
                             no_image_stylesheet=True,
                         )
 
-                        pbar.update()
-                        pbar.set_description(f"Requesting searching result once...")
+                        progress.update(task, advance=1, description="Requesting searching result once...")
 
                         tab = await browser.get(search_status_url, new_tab=True)
                         await tab.find('div[id="react-root"]')
@@ -137,34 +135,37 @@ class TwitterKeywordMediaParser(KeywordParser):
 
                     # Connect twice to get page
                     try:
-                        pbar.update()
-                        pbar.set_description(f"Requesting searching result again with cookies...")
+                        progress.update(task, advance=1, description="Requesting searching result again with cookies...")
 
                         await tab.get(search_status_url)  # Do not reload directly! It may be the login page.
                     except Exception as e:
                         browser.stop()
                         raise ConnectionError(f"{e}")
                     flag_success = True
-                    pbar.update()  # Finish
+                    
+                    progress.update(task, advance=1, description="[green]Requesting successfully finished!")
+
                     break
-            except Exception as e:
-                self.crawler_settings.log.warning(f"Loading Twitter / X searching result page failed at attempt {i + 1} because {e}")
-                error_msg = e
+                except Exception as e:
+                    self.crawler_settings.log.warning(f"Loading Twitter / X searching result page failed at attempt {i + 1} because {e}")
+                    error_msg = e
         if not flag_success:
             output_msg_base = f"Loading Twitter / X searching result page \"{search_status_url}\" failed"
             self.crawler_settings.log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {error_msg}")
             raise ConnectionError(f"{error_msg}")
 
         self.crawler_settings.log.info("Scrolling to get status...")
-        status_list, media_count = await scrolling_to_find_status(
-            tab=tab, 
-            tab_url=search_status_url,
-            crawler_settings=self.crawler_settings,
-            reload_times=self.reload_times,
-            error_retry_delay=self.error_retry_delay,
-            image_num_restriction=self.crawler_settings.capacity_count_config.image_num,
-            pbar_leave=True,
-        )
+        with ProgressGroup(panel_title="Scrolling to Find [yellow]Status[reset]") as progress_group:
+            status_list, media_count = await scrolling_to_find_status(
+                tab=tab, 
+                tab_url=search_status_url,
+                crawler_settings=self.crawler_settings,
+                reload_times=self.reload_times,
+                error_retry_delay=self.error_retry_delay,
+                image_num_restriction=self.crawler_settings.capacity_count_config.image_num,
+                progress_group=progress_group,
+                transient=False,
+            )
         self.crawler_settings.log.info(f'Finished getting status. {len(status_list)} status & {media_count} {"images" if media_count > 1 else "image"} are collected.')
         browser.stop()
         self.status_list = status_list

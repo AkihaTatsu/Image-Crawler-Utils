@@ -9,6 +9,7 @@ import traceback
 
 from image_crawler_utils.configs import DownloadConfig
 from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import ProgressGroup
 from image_crawler_utils.user_agent import UserAgent
 
 from .core_downloader import download_image
@@ -22,6 +23,7 @@ def pixiv_download_image_from_url(
     log: Log=Log(),
     store_path: str="./",
     session: Optional[requests.Session]=requests.Session(),
+    progress_group: Optional[ProgressGroup]=None,
     thread_id: int=0,
 ) -> tuple[float, int]:
     """
@@ -34,6 +36,7 @@ def pixiv_download_image_from_url(
         log (config.Log): The logger.
         store_path (str): Path of image to be stored.
         session (requests.Session): Session of requests. Can contain cookies.
+        progress_group (image_crawler_utils.progress_bar.ProgressGroup): The Group of Progress bars to be displayed in.
         thread_id (int): Nth thread of image downloading.
 
     Returns:
@@ -115,6 +118,7 @@ def pixiv_download_image_from_url(
                 log=log,
                 store_path=store_path,
                 session=session,
+                progress_group=progress_group,
                 thread_id=thread_id,
             )
             total_downloaded_size += image_size            
@@ -154,6 +158,7 @@ def pixiv_download_image_from_url(
             log=log,
             store_path=store_path,
             session=session,
+            progress_group=progress_group,
             thread_id=thread_id,
         )
         if is_success:

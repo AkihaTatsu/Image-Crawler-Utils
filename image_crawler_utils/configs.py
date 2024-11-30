@@ -80,7 +80,7 @@ class DebugConfig:
 @dataclasses.dataclass
 class CapacityCountConfig:
     """
-    Contains config for restrictions of images number, total size or web page number.
+    Contains config for restrictions of images number, total size or webpage number.
 
     Parameters:
         image_num (int, optional): Number of images to be parsed / downloaded in total; None means no restriction.

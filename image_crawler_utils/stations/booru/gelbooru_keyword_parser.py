@@ -6,7 +6,7 @@ import requests
 
 from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
 from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
-from image_crawler_utils.utils import custom_tqdm
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
 
 from .constants import GELBOORU_IMAGE_NUM_PER_JSON, MAX_GELBOORU_JSON_PAGE_NUM, SPECIAL_WEBSITES
 
@@ -53,7 +53,7 @@ class GelbooruKeywordParser(KeywordParser):
         self.use_keyword_include = use_keyword_include
 
 
-    def run(self):
+    def run(self) -> list[ImageInfo]:
         with requests.Session() as session:
             if not self.cookies.is_none():
                 session.cookies.update(self.cookies.cookies_dict)
@@ -116,10 +116,8 @@ class GelbooruKeywordParser(KeywordParser):
         min_image_num = None
 
         self.crawler_settings.log.info("Testing the image num of keyword (include) groups to find the one with fewest images.")
-        with custom_tqdm.trange(
-            len(keyword_strings),
-            desc="Requesting pages",
-        ) as pbar:
+        with CustomProgress(transient=True) as progress:
+            task = progress.add_task(description="Requesting pages:", total=len(keyword_strings))
             for string in keyword_strings:
                 self.crawler_settings.log.debug(f'Testing the image num of keyword string: {string}')
                 self.keyword_string = string
@@ -128,7 +126,9 @@ class GelbooruKeywordParser(KeywordParser):
                 if min_image_num is None or image_num < min_image_num:
                     min_image_num = image_num
                     min_string = string
-                pbar.update()
+                progress.update(task, advance=1)
+
+            progress.update(task, description="[green]Requesting pages finished!")
 
         self.keyword_string = min_string
         self.crawler_settings.log.info(f'The keyword string the parser will use is "{self.keyword_string}" which has {min_image_num} {"images" if min_image_num > 1 else "image"}.')
@@ -202,10 +202,10 @@ class GelbooruKeywordParser(KeywordParser):
         self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
         parent_id_list = []
-        with custom_tqdm.trange(
-            len(page_content_list),
-            desc="Parsing image info pages",
-        ) as pbar:
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(page_content_list))
+            
             for content in page_content_list:
                 if "post" not in json.loads(content).keys():  # No result!
                     continue
@@ -289,7 +289,9 @@ class GelbooruKeywordParser(KeywordParser):
                             info=new_info,
                         ))
                
-                pbar.update()
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
                 
         self.parent_id_list = list(set(parent_id_list))
         self.image_info_list = image_info_list

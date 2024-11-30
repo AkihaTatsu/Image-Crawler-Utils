@@ -7,10 +7,13 @@ import traceback
 from concurrent import futures
 import requests
 
+from rich.progress import SpinnerColumn
+
 from image_crawler_utils import Cookies, CrawlerSettings
 from image_crawler_utils.image_downloader import download_image_from_url
-from image_crawler_utils.utils import custom_tqdm, check_dir
-from image_crawler_utils.log import print_logging_msg, Log
+from image_crawler_utils.progress_bar import ProgressGroup
+from image_crawler_utils.utils import check_dir
+from image_crawler_utils.log import Log
 
 from .image_info import ImageInfo
 
@@ -206,13 +209,14 @@ class Downloader:
         succeeded_id = []
 
         # Start downloading
-        with custom_tqdm.trange(
-            download_num,
-            desc="Downloading",
-        ) as pbar:
+        with ProgressGroup(panel_title="Downloading [cyan]Images[reset]") as progress_group:
+            progress_group.sub_count_bar.columns = (SpinnerColumn(), *progress_group.sub_count_bar.columns)  # Add a spinner to its left
+            task = progress_group.main_count_bar.add_task("Downloading:", total=download_num)
+
             undone_ids = list(range(download_num))
             failed_ids = []
             fail_count = [0] * download_num
+            shutdown_flag = False
                     
             with requests.Session() as session:
                 if not self.cookies.is_none():
@@ -230,6 +234,7 @@ class Downloader:
                                 self.crawler_settings.log,
                                 self.store_path,
                                 session,
+                                progress_group,
                                 i,
                                 None,
                             ) for i in undone_ids]
@@ -242,6 +247,7 @@ class Downloader:
                                 self.crawler_settings.log,
                                 self.store_path[filtered_ordinals_list[i]],
                                 session,
+                                progress_group,
                                 i,
                                 None,
                             ) for i in undone_ids]
@@ -253,14 +259,12 @@ class Downloader:
                                 download_traffic += thread.result()[0] / 2**20
                                 succeeded_id.append(succeeded_n)
                                 undone_ids.remove(succeeded_n)
-                                pbar.set_description(f"Downloading {download_traffic:.2f} MB")
-                                pbar.update()
+                                progress_group.main_count_bar.update(task, advance=1, description=f"Downloading [repr.number]{download_traffic:.2f}[reset] MB:")
                             else:
                                 # Failed download
                                 download_traffic += thread.result()[0] / 2**20
                                 failed_n = thread.result()[1]
                                 fail_count[failed_n] += 1
-                                pbar.set_description(f"Downloading {download_traffic:.2f} MB")
 
                                 # If there are backup URLs, record it
                                 if len(self.image_info_list[filtered_ordinals_list[failed_n]].backup_urls) >= fail_count[failed_n]:
@@ -268,18 +272,24 @@ class Downloader:
                                     if failed_n not in failed_ids:
                                         failed_ids.append(failed_n)
                                 else:
-                                    pbar.update()
+                                    progress_group.main_count_bar.update(task, advance=1, description=f"Downloading [repr.number]{download_traffic:.2f}[reset] MB:")
                                     # Remove from failed_ids recording
                                     if failed_n in failed_ids:
                                         failed_ids.remove(failed_n)
                                     undone_ids.remove(failed_n)
 
                             if self.crawler_settings.capacity_count_config.capacity is not None and download_traffic > self.crawler_settings.capacity_count_config.capacity:
-                                self.crawler_settings.log.warning("Download capacity reached!")
+                                self.crawler_settings.log.warning("Downloading capacity reached!")
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 undone_ids = []
                                 failed_ids = []
+                                shutdown_flag = True
                                 break
+            
+            if shutdown_flag:  # Interrupted!
+                progress_group.main_count_bar.update(task, description=f"[red]Downloading interrupted! [repr.number]{download_traffic:.2f}[reset] MB:")
+            else:  # Finished normally, set progress bar to finished state
+                progress_group.main_count_bar.update(task, description=f"[green]Downloading finished! [repr.number]{download_traffic:.2f}[reset] MB:")
 
         succeeded_ordinals_list = [filtered_ordinals_list[i] 
                                    for i in succeeded_id]
@@ -314,15 +324,15 @@ class Downloader:
         Dataclasses will be displayed in a neater way.
         """
         
-        print_logging_msg("========== Current Downloader Config ==========", "debug")
+        print("========== Current Downloader Config ==========")
 
         print('\nBasic Info:')
         try:
             print(f"  - Image info filter: {self.image_info_filter}")
-            print(f"  - Store path: {self.store_path}")
-            print(f"  - Absolute store path: {os.path.abspath(self.store_path)}")
+            print(f"  - Store path: \"{self.store_path}\"")
+            print(f"  - Absolute store path: \"{os.path.abspath(self.store_path)}\"")
         except Exception as e:
-            print_logging_msg(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
+            print(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
 
         print('\nImage downloading info:')
         try:
@@ -330,11 +340,11 @@ class Downloader:
             print(f"  - Number of images to be downloaded: {len(filtered_ordinals_list)}")
             print(f"  - Number of images to be skipped: {len(skipped_ordinals_list)}")
         except Exception as e:
-            print_logging_msg(f"Image downloading info has an error because {e}!\n{traceback.format_exc()}", "error")
+            print(f"Image downloading info has an error because {e}!\n{traceback.format_exc()}", "error")
 
         print('')
-        print_logging_msg("CrawlerSettings used:", "debug")
+        print("CrawlerSettings used:")
         self.crawler_settings.display_all_configs()
             
         print('')
-        print_logging_msg("========== Config Display Ending ==========", "debug")
+        print("========== Config Display Ending ==========")

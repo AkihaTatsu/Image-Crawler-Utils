@@ -10,7 +10,8 @@ import nodriver
 from concurrent import futures
 
 from image_crawler_utils import Cookies, Parser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
-from image_crawler_utils.utils import custom_tqdm, set_up_nodriver_browser
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import set_up_nodriver_browser
 
 from .search_settings import TwitterSearchSettings
 from .search_status_analyzer import scrolling_to_find_status
@@ -67,7 +68,7 @@ class TwitterUserMediaParser(Parser):
         self.headless = headless
 
    
-    def run(self):
+    def run(self) -> list[ImageInfo]:
         if self.cookies.is_none():
             raise ValueError('Cookies cannot be empty!')
         self.get_media_num()
@@ -87,11 +88,8 @@ class TwitterUserMediaParser(Parser):
         total_num = None
         for i in range(self.crawler_settings.download_config.retry_times):
             try:
-                with custom_tqdm.trange(
-                    3,
-                    desc=f'Loading browser components...',
-                    leave=False,
-                ) as pbar:
+                with CustomProgress(has_spinner=True, transient=True) as progress:
+                    task = progress.add_task(total=3, description='Loading browser components...')
                     # Connect once to get cookies
                     try:
                         self.crawler_settings.log.debug(f"Connecting to twitter searching result: \"{media_url}\"")
@@ -101,12 +99,12 @@ class TwitterUserMediaParser(Parser):
                             no_image_stylesheet=True,
                         )
 
-                        pbar.update()
-                        pbar.set_description(f"Requesting user page once...")
+                        progress.update(task, advance=1, description="Requesting user page once...")
 
                         tab = await browser.get(media_url, new_tab=True)
                         await tab.find('div[id="react-root"]')
                     except Exception as e:
+                        progress.finish_task(task)
                         browser.stop()
                         raise ConnectionError(f"{e}")
 
@@ -117,18 +115,20 @@ class TwitterUserMediaParser(Parser):
 
                     # Connect twice to get page
                     try:
-                        pbar.update()
-                        pbar.set_description(f"Requesting user page again with cookies...")
+                        progress.update(task, advance=1, description="Requesting user page again with cookies...")
 
                         await tab.get(media_url)  # Do not reload directly! It may be the login page.
                         await tab.scroll_up(1000)  # Sometimes it does not load from the first tweet. Scroll to top in case of this!
                     except Exception as e:
+                        progress.finish_task(task)
                         browser.stop()
                         raise ConnectionError(f"{e}")
                     main_structure = await tab.find('div[data-testid="primaryColumn"]', timeout=30)
                     total_num = await main_structure.query_selector('div[class="css-146c3p1 r-dnmrzs r-1udh08x r-3s2u2q r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-n6v787 r-1cwl3u0 r-16dba41"]')
                     total_num = int(''.join(re.findall(r'\d+', total_num.text)))
-                    pbar.update()  # Finish
+                    
+                    progress.update(task, advance=1, description="[green]Requesting successfully finished!")  # Finish
+                    progress.finish_task(task)
                     break
             except Exception as e:
                 self.crawler_settings.log.warning(f"Loading Twitter / X user media page failed at attempt {i + 1} because {e}")
@@ -197,6 +197,7 @@ class TwitterUserMediaParser(Parser):
     async def __get_status_from_urls_thread(
         self, 
         search_setting: TwitterSearchSettings,
+        progress_group: ProgressGroup,
         thread_id: int,
     ) -> list[TwitterStatus]:
         browser = await set_up_nodriver_browser(
@@ -215,7 +216,8 @@ class TwitterUserMediaParser(Parser):
             crawler_settings=self.crawler_settings,
             reload_times=self.reload_times,
             error_retry_delay=self.error_retry_delay,
-            pbar_leave=False,
+            progress_group=progress_group,
+            transient=True,
         )
         browser.stop()
         self.crawler_settings.log.info(f'Finished thread {thread_id + 1}/{len(self.search_settings_list)} that detected from {search_setting.starting_date} to {search_setting.ending_date}. {len(result_status_list)} status & {media_count} {"images" if media_count > 1 else "image"} are detected.')
@@ -233,11 +235,10 @@ class TwitterUserMediaParser(Parser):
         batched_search_settings_list = [self.search_settings_list[k * thread_num:min((k + 1) * thread_num, len(self.search_settings_list))] 
                                         for k in range((len(self.search_settings_list) - 1) // thread_num + 1)]
         
-        exit_flag = False        
-        with custom_tqdm.trange(
-            self.total_num,
-        ) as pbar:
-            pbar.set_description(f'Searching')                
+        exit_flag = False 
+        with ProgressGroup(panel_title="Scrolling to Find [yellow]Status[reset]") as progress_group:
+            task = progress_group.main_count_bar.add_task("Searching:", total=self.total_num)
+
             for j in range(len(batched_search_settings_list)):
                 # Get status using threading method
                 thread_num = self.crawler_settings.download_config.thread_num
@@ -246,6 +247,7 @@ class TwitterUserMediaParser(Parser):
                         nodriver.loop().run_until_complete, 
                         self.__get_status_from_urls_thread(
                             batched_search_settings_list[j][i],
+                            progress_group,
                             j * thread_num + i,
                         ),
                     ) for i in range(len(batched_search_settings_list[j]))]
@@ -258,10 +260,11 @@ class TwitterUserMediaParser(Parser):
                             if status.status_url not in total_status_url_list:
                                 total_status_list.append(status)
                                 total_media_num += len(status.media_list)
-                                pbar.update(len(status.media_list))
+
+                                progress_group.main_count_bar.update(task, advance=len(status.media_list))
 
                         # Update search result
-                        pbar.set_description(f'Got {finished_num} {"pages" if finished_num > 1 else "page"} & {len(total_status_list)} status')
+                        progress_group.main_count_bar.update(task, description=f'Got [repr.number]{finished_num}[reset] {"pages" if finished_num > 1 else "page"} & [repr.number]{len(total_status_list)}[reset] status:')
                         
                         # Exit when empty
                         if len(thread.result()) == 0 and self.exit_when_empty:

@@ -12,7 +12,7 @@ English | <a href="docs/README_zh.md">简体中文</a>
 
 ## About
 
-A **rather customizable** image crawler structure, designed to download images with their information using multi-threading method. This GIF depicts a sample run of the [example](examples/example.py):
+A **rather customizable** image crawler structure, designed to download images with their information using multi-threading method. This GIF depicts a sample run:
 
 ![](docs/example.gif)
 
@@ -52,7 +52,7 @@ pip install image-crawler-utils
     + Downloading images from searching result
     + Downloading images uploaded by a certain user
 + Logging of crawler process onto the console and (optional) into a file.
-+ Using `tqdm` bars to denote the progress of crawler (Jupyter notebook support is included).
++ Using `rich` bars and logging messages to denote the progress of crawler (Jupyter Notebook support is included).
 + Save or load the settings and configs of a crawler.
 + Save or load the information of images for future downloading.
 + Acquire and manage cookies of some websites, including saving and loading them.
@@ -96,6 +96,8 @@ crawler_settings = CrawlerSettings(
         show_error: bool=True,
         show_critical: bool=True,
     ),
+    # Logging settings
+    detailed_console_log: bool=False,
     # Extra configs for custom use
     extra_configs={
         "arg_name": config, 

@@ -6,7 +6,8 @@ import asyncio
 
 from image_crawler_utils import Cookies
 from image_crawler_utils.log import Log
-from image_crawler_utils.utils import custom_tqdm, set_up_nodriver_browser
+from image_crawler_utils.progress_bar import CustomProgress
+from image_crawler_utils.utils import set_up_nodriver_browser
 
 
 
@@ -17,13 +18,12 @@ async def __get_twitter_cookies(
     proxies: Optional[dict]=None, 
     log: Log=Log(),
 ) -> Cookies:
-    try:
-        log.info(f"Getting cookies by logging in to https://x.com/ ...")
-        with custom_tqdm.trange(
-            4,
-            desc=f'Loading browser components...',
-            leave=False,
-        ) as pbar:
+    with CustomProgress(has_spinner=True, transient=True) as progress:
+        try:
+            log.info(f"Getting cookies by logging in to https://x.com/ ...")
+        
+            task = progress.add_task(total=4, description='Loading browser components...')
+                    
             browser = await set_up_nodriver_browser(
                 proxies=proxies,
                 headless=False,
@@ -31,8 +31,7 @@ async def __get_twitter_cookies(
                 window_height=600,
             )
             
-            pbar.update()
-            pbar.set_description(f"Loading login page...")
+            progress.update(task, advance=1, description="Loading login page...")
 
             tab = await browser.get("https://x.com/i/flow/login", new_tab=True)
             if twitter_account is not None:  
@@ -41,8 +40,7 @@ async def __get_twitter_cookies(
                 await asyncio.sleep(0.5)
                 await user_input.send_keys('\n')
             
-            pbar.update()
-            pbar.set_description(f"Inputting password...")
+            progress.update(task, advance=1, description="Inputting password...")
 
             async def find_password_element(_tab: nodriver.Tab):
                 try:
@@ -67,8 +65,7 @@ async def __get_twitter_cookies(
                 login_button = await tab.find('button[data-testid="LoginForm_Login_Button"]')
                 await login_button.click()
 
-            pbar.update()
-            pbar.set_description(f"Trying to login...")
+            progress.update(task, advance=1, description="Trying to login...")
 
             while True:  # As long as no successful loggin in, continue this loop
                 try:
@@ -77,16 +74,17 @@ async def __get_twitter_cookies(
                 except:
                     continue
             
-            pbar.update()
-            pbar.set_description(f"Parsing cookies...")
+            progress.update(task, advance=1, description="Parsing cookies...")
 
             cookies_nodriver = await browser.cookies.get_all()
             cookies = Cookies.create_by(cookies_nodriver)
 
+            progress.update(task, advance=1, description="[green]Cookies successfully parsed!")
+
             browser.stop()
-    except Exception as e:
-        log.error(f"FAILED to parse cookies from Twitter / X.\n{traceback.format_exc()}", output_msg=f"FAILED to parse cookies from Twitter / X because {e}\n{traceback.format_exc()}")
-        cookies = None
+        except Exception as e:
+            log.error(f"FAILED to parse cookies from Twitter / X.\n{traceback.format_exc()}", output_msg=f"FAILED to parse cookies from Twitter / X because {e}\n{traceback.format_exc()}")
+            cookies = None
     return cookies
 
 

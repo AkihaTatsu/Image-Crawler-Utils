@@ -54,6 +54,8 @@ crawler_settings = CrawlerSettings(
     overwrite_images: bool=True,
     # Configs define which types of messages are shown on the console.
     debug_config=DebugConfig.level("info"),
+    # Logging settings
+    detailed_console_log: bool=False,
     # Extra configs for custom use
     extra_configs={
         "arg_name": config, 
@@ -99,6 +101,8 @@ crawler_settings = CrawlerSettings(
     + Leave any of them blank will use the default value of the corresponding parameter in DownloadConfig.
     + It is also acceptable to pass a DownloadConfig class into the `download_config` parameter of a CrawlerSettings class. It will overwrite the parameters above.
   + `debug_config`: A `image_crawler_utils.configs.DebugConfig` class, which controls the displaying level of messages on the console. Please refer to the [DebugConfig()](#debugconfig) chapter. 
++ `detailed_console_log`: Logging detailed information to the console.
+  + When logging info to the console, always log `msg` (the messages logged into files) even if `output_msg` exists (Please refer to the [Classes and Functions#Log](classes_and_functions.md#log) chapter).
 + `extra_configs`: This optional `dict` is not used in any of the supported sites and crawling tasks, as it is reserved for developing your custom image crawler.
 
 It is recommended to add a logging file when running the crawler, as the message displayed on the console is simplified and usually not complete. After you set up a CrawlerSettings, use `.set_logging_file()` to set a logging file handler to current settings:
@@ -347,12 +351,14 @@ save_dataclass(
     dataclass,
     file_name: str,
     file_type: Optional[str]=None,
+    encoding: str='UTF-8',
     log: Log=Log(),
 )
 load_dataclass(
     dataclass_to_load,
     file_name: str,
     file_type: Optional[str]=None,
+    encoding: str='UTF-8',
     log: Log=Log(),
 )
 
@@ -375,10 +381,12 @@ load_dataclass(new_config, "download_config.pkl")
   + Set `file_type` parameter to `json` or `pkl` will force the function to save the dataclass (config) into this type, or leaving this parameter blank will cause the funtion to determine the file type according to `file_name`.
     + That is, `save_dataclass(dataclass, 'foo.json')` works the same as `save_dataclass(dataclass, 'foo', 'json')`.
     + `.json` is suggested when your dataclasses (configs) do not include objects that cannot be JSON-serialized (e.g. a function), while serialized data file `.pkl` can support most data types but the saved file is not readable.
+    + `encoding` will only work when saving to a `.json` files.
   + The function will return a tuple of `(saved file name, absolute path of saved file name)` when succeeded, or `None` when failed.
 + `load_dataclass()` will load the dataclass (config) from the designated file into the provided `dataclass_to_load` parameter.
   + Set `file_type` parameter to `json` or `pkl` will force the function to consider the file as this type, or leaving this parameter blank will cause the funtion to determine file type according to `file_name`.
     + That is, `load_dataclass(dataclass, 'foo.json')` works the same as `load_dataclass(dataclass, 'foo.json', 'json')`.
+    + `encoding` will only work when loading from a `.json` files.
   + The `dataclass_to_load` should be the same class as the dataclass (config) you saved in the file.
   + The function will return `dataclass_to_load` itself when succeeded, or `None` when failed.
 + The `log` parameter controls the levels of logging onto the console and into the file. You can use `log=crawler_settings.log` to make it the same as the CrawlerSettings you set up.
@@ -567,10 +575,10 @@ from image_crawler_utils import Cookies
 cookies = Cookies.create_by(foo_cookies)
 
 # Save a Cookies
-cookies.save_to_json('cookies.json')
+cookies.save_to_json('cookies.json', encoding='UTF-8')
 
 # Load a Cookies
-new_cookies = Cookies.load_from_json('cookies.json')
+new_cookies = Cookies.load_from_json('cookies.json', encoding='UTF-8')
 ```
 
 + Two Cookies can be added. If both Cookies have cookies with same `name` value, then the latter will be omitted.
@@ -677,10 +685,12 @@ from image_crawler_utils import save_image_infos, load_image_infos
 save_image_infos(
     image_info_list: Iterable[ImageInfo], 
     json_file: str,
+    encoding: str='UTF-8',
     log: Log=Log(),
 )
 image_info_list = load_image_infos(
     json_file: str,
+    encoding: str='UTF-8',
     log: Log=Log(),
 )
 

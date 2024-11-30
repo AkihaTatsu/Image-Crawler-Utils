@@ -29,11 +29,17 @@ If you want to build a custom you only need to construct a [Parser](#parser) / [
 - [image\_crawler\_utils.log](#image_crawler_utilslog)
   - [Log](#log)
   - [print\_logging\_msg()](#print_logging_msg)
+- [image\_crawler\_utils.progress\_bar](#image_crawler_utilsprogress_bar)
+  - [CountColumn](#countcolumn)
+  - [TimeColumnLeft](#timecolumnleft)
+  - [SpeedColumnRight](#speedcolumnright)
+  - [CustomProgress](#customprogress)
+  - [ProgressGroup](#progressgroup)
 - [image\_crawler\_utils.user\_agent](#image_crawler_utilsuser_agent)
   - [UserAgent](#useragent)
 - [image\_crawler\_utils.utils](#image_crawler_utilsutils)
   - [Empty](#empty)
-  - [custom\_tqdm](#custom_tqdm)
+  - [shorten\_file\_name()](#shorten_file_name)
   - [check\_dir()](#check_dir)
   - [save\_dataclass()](#save_dataclass)
   - [load\_dataclass()](#load_dataclass)
@@ -141,7 +147,7 @@ Its attributes include:
   
   ```Python
   import requests
-
+  
   Parser().request_page_content(
       url: str, 
       session=requests.Session(),
@@ -166,7 +172,7 @@ Its attributes include:
   
   ```Python
   import requests
-
+  
   Parser().threading_request_page_content(
       url_list: Iterable[str], 
       restriction_num: Optional[int]=None, 
@@ -376,6 +382,8 @@ Its parameters include:
 + `logging_level`: Controls the level of logging INTO FILES. Default is `logging.DEBUG`.
   + It can be any of the levels from the `logging` module, like `logging.DEBUG`, `logging.INFO`, etc. For detailed information, please refer to the documentation of the `logging` module.
   + It does not affect logging onto console.
++ `detailed_console_log`: If set to `True` (default is `False`), when logging info to the console, always log `msg` (the messages logged into files) even if `output_msg` exists.
+  + It is related to attribute functions `.debug()`, `.info()`, `.warning()`, `.error()` and `.critical()`.
 
 Its attributes include:
 
@@ -403,17 +411,17 @@ Its attributes include:
   
 ### print_logging_msg()
 
-To be compatible with `tqdm` bars, `print_logging_msg()` will use `tqdm.write()` method to print messages onto the console. Set logging level in `print_logging_msg()` will also output time and logging level as the prefix before the message, like:
+`print_logging_msg()` uses logging module in `rich` to print messages onto the console. Set logging level in `print_logging_msg()` will also output time and logging level as the prefix before the message, like:
 
 ```Python
 >>> from image_crawler_utils.log import print_logging_msg
 >>> print_logging_msg("message")
 message
 >>> print_logging_msg("message", "info")
-[08:18:31] [INFO]: message
+[21:01:51] INFO     message
 ```
 
-It is STRONGLY SUGGESTED to use `print_logging_msg()` instead of `print()` to print messages onto console. You can combine it with [suppress_print()](#suppress_print) from `image_crawler_utils.utils` to prevent messages messing up console output when `tqdm` bars are being displayed.
+It is STRONGLY SUGGESTED to use `print_logging_msg()` instead of `print()` to print messages onto console.
 
 The parameters are like:
 
@@ -432,6 +440,117 @@ print_logging_msg(
 + `debug_config`: A `image_crawler_utils.configs.DebugConfig` class, controls whether the message will be output.
   + For example, if `level` is set to `info` and `debug_config` is set to `DebugConfig.level('warning')`, then the `msg` will not be output.
   + If `level` is set to a string other than `debug`, `info`, `warning` / `warn`, `error` and `critical`, then this parameter will be omitted and the `msg` will always be output.
+
+## image_crawler_utils.progress_bar
+
+### CountColumn
+
+A `rich.progress.ProgressColumn` class, which displays current progress number. For example, `10` will be displayed as `10` will `1120` be displayed as `1.1×10³`.
+
+### TimeColumnLeft
+
+A `rich.progress.ProgressColumn` class, which displays elapsed time and remaining time in `[00:08<00:03,` format. It is suggested to put it to the left of SpeedColumnRight.
+
+Besides the parameters of `rich.progress.ProgressColumn`, its parameters also include:
+
++ `has_total`: Set to `True` if involved tasks has a total number. When set to `False`, remaining time will not be displayed. Default is `False`.
++ `time_format`: A string that controls the time format. Default is `"%H:%M:%S"`.
+  + `%H` means hours, `%M` means minutes, `%S` means seconds, `%L` means miliseconds.
++ `is_compact_time_format`: When set to `True` (default), the `time_format` will be truncated to start from `'%M'` when time is lower than 1 hour. Default is `False`.
+  + For example, `"%H:%M:%S.%L"` will be truncated to `"%M:%S.%L"` when time is lower than 1 hour.
+
+### SpeedColumnRight
+
+A `rich.progress.ProgressColumn` class, which displays speed in `1.23 MB/s]` format. It is suggested to put it to the right of TimeColumnLeft.
+
+Besides the parameters of `rich.progress.ProgressColumn`, its parameters also include:
+
++ `is_file`: Set to `True` if involved tasks deal with files. When set to `True`, the units will use `KB`, `MB`, etc. Default is `False`.
+
+### CustomProgress
+
+A wrapped `rich.progress.Progress` class, which can be quickly set up with only several parameters for certain tasks.
+
+Besides the parameters of `rich.progress.Progress`, its parameters also include:
+
++ `text_only`: If set to `True`, Progress bars will only display descriptions. Default is `False`.
+  + When set to `True`, all other columns except `rich.progress.TextColumn("[progress.description]{task.description}[reset]")` will be omitted!
++ `has_spinner`: If set to `True`, a spinner will be added to the left. Default is `False`.
++ `spinner_name`: The type of the spinner, which can be referred from [this page of cli-spinners](https://jsfiddle.net/sindresorhus/2eLtsbey/embedded/result/) Default is `"dots"`.
++ `has_total`: Set to `True` if involved tasks have total numbers. Default is `False`.
++ `is_file`: Set to `True` if involved tasks deal with files. Default is `False`.
++ `time_format`: A string that controls the time format. Default is `"%H:%M:%S"`.
+  + `%H` means hours, `%M` means minutes, `%S` means seconds, `%L` means miliseconds.
++ `is_compact_time_format`: When set to `True` (default), the `time_format` will be truncated to start from `'%M'` when time is lower than 1 hour. Default is `False`.
+  + For example, `"%H:%M:%S.%L"` will be truncated to `"%M:%S.%L"` when time is lower than 1 hour.
++ `is_sub_process`: Set to `True` if it is a subprocess of a certain ProgressGroup. Default is `False`.
++ If you add ProgressColumns to CustomProgress like normal `rich.progress.Progress` class, it will be placed between of `BarColumn` & `TaskProgressColumn` (i.e. the progress bar and percentage) and `TimeColumnLeft`.
+  + These ProgressColumns classes will be omitted if `text_only` is set to `True`.
+
+Besides the attributes of `rich.progress.Progress`, its attributes also include:
+
++ `finish_task()`: Finish a task within the CustomProgress. Unless this CustomProgress is a preset attribute of `ProgressGroup` or its `is_sub_process` is set to `True`, running this function will stop the whole CustomProgress; otherwise it will just stop the task. The parameters are like:
+  
+  ```Python
+  import rich
+
+  CustomProgress().finish_task(
+      task: rich.progress.Task,
+      hide: bool=True,
+  )
+  ```
+
+  + `task`: The `rich.progress.Task` that is created under this CustomProgress.
+  + `hide`: Set to `True` (default) to hide the progress bar of this task.
+
+### ProgressGroup
+
+Designed for quickly build a group of Progress bars that can be displayed at the same time.
+
+Its parameters include:
+
++ `progress_list`: An iterable list  of `rich.progress.Progress` classes which will be added to the ProgressGroup when created. Default is `[]` (an empty `list`).
++ `has_panel`: When set to `True` (default), a `rich.panel.Panel` will be wrapped around all of the progress bars.
++ `panel_title`: When set to a `str`, the title will be displayed at the top middle of the panel.
+  + Works only if `has_panel` is set to `True`.
++ `panel_subtitle`: When set to a `str`, the title will be displayed at the bottom middle of the panel.
+  + Works only if `has_panel` is set to `True`.
++ `refresh_per_second:`: Refreshing the progress bars for `refresh_per_second:` times in a second. Default is `10`.
+
+Its attributes include:
+
++ `.progress_list`: The `progress_list` passed into ProgressGroup.
++ A list of preset progress `CustomProgress`, whose parameters can be referred from this table:
+
+|         Attribute          | transient | has_total | is_file | text_only |
+| :------------------------: | :-------: | :-------: | :-----: | :-------: |
+|      `.main_file_bar`      |  `False`  |  `True`   | `True`  |  `False`  |
+|     `.main_count_bar`      |  `False`  |  `True`   | `False` |  `False`  |
+| `.main_no_total_file_bar`  |  `False`  |  `False`  | `True`  |  `False`  |
+| `.main_no_total_count_bar` |  `False`  |  `False`  | `False` |  `False`  |
+|      `.sub_file_bar`       |  `True`   |  `True`   | `True`  |  `False`  |
+|      `.sub_count_bar`      | ``True``  |  `True`   | `False` |  `False`  |
+|  `.sub_no_total_file_bar`  | ``True``  |  `False`  | `True`  |  `False`  |
+| `.sub_no_total_count_bar`  |  `True`   |  `False`  | `False` |  `False`  |
+|   `.main_text_only_bar`    |  `False`  |     /     |    /    |  `True`   |
+|    `.sub_text_only_bar`    |  `True`   |     /     |    /    |  `True`   |
+
+
++ `.group`: A `rich.console.Group` class which contains all Progress classes above.
++ `.live`: A `rich.live.Live` class built from `.group`. Has `rich.panel.Panel` wrapped if `has_panel` is set to `True`.
++ `.start()`: Starts the ProgressGroup. That is, starts the `ProgressGroup().live` attribute.
++ `.stop()`: Stops the ProgressGroup. That is, stops the `ProgressGroup().live` attribute.
+
+It is suggested to use it with `with`, like:
+
+```Python
+with ProgressGroup(panel_title="Downloading") as progress_group:
+    main_progress = progress_group.main_count_bar
+    task = main_bar.add_task(total=10, description="Foobar")
+    main_progress.update(task, advance=1)
+```
+
++ In this case, you can pass the `progress_group` to other functions within the `with` structure, which can be useful when using threading methods.
 
 ## image_crawler_utils.user_agent
 
@@ -460,20 +579,23 @@ Its attributes include:
 
 A placeholder class, meaning the parameter is blank. If `None` is not a meaningless value of a parameter, you can set its default value to `Empty()`, which means no values are designated for this parameter.
 
-### custom_tqdm
+### shorten_file_name()
 
-`custom_tqdm` will use different `tqdm` bars according to whether current environment is IPython kernel.
+Shorten file names to make its length below certain number of characters. Useful when displayed in progress bars. For example, `1234567890.jpg` will be shortened to `12... .jpg` when length is restricted to `10`, while `123456.jpg` will not be shortened in this case.
 
-Its usage is the same as `tqdm` from `import tqdm`, like:
+The parameters are like:
 
 ```Python
-from image_crawler_utils.utils import custom_tqdm
+import os
 
-with custom_tqdm.tqdm() as pbar:
-    # Do something
-with custom_tqdm.trange(10) as pbar:
-    # Do something
+shorten_file_name(
+    file_name: str,
+    name_len: int=(os.get_terminal_size().columns - 10) // 5,
+) -> str
 ```
+
++ `file_name`: Name of the file.
++ `name_len`: Restricted length of file name.
 
 ### check_dir()
 
@@ -528,7 +650,7 @@ set_up_nodriver_browser(
 
 ### suppress_print()
 
-As `tqdm` bars are widely used in Image Crawler Utils, in order to prevent `print()` from messing up the console output, it is suggested to use `suppress_print()` to stop any messages from being output to console by `print()`.
+`suppress_print()` can stop any messages from being output to console by the builtin `print()`.
 + Messages output from `image_crawler_utils.log.print_logging_msg()` or the attribute functions of `image_crawler_utils.log.Log` will not be suppressed.
 
 ```Python

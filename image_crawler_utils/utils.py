@@ -1,13 +1,11 @@
 import dataclasses
 import json, dill
-import os, sys
-import tqdm
-from tqdm import notebook
+import os
+from pathlib import Path
 
 from typing import Optional, Union, Any
 from collections.abc import Callable
 import traceback
-from IPython import get_ipython
 from contextlib import contextmanager
 import builtins
 
@@ -28,17 +26,28 @@ class Empty:
     pass
 
 
-##### Customized tqdm bars
+##### Shortened file name
 
 
-def _is_ipython_kernel() -> bool:
-    if 'IPython' not in sys.modules:
-        return False
-    return getattr(get_ipython(), 'kernel', None) is not None
+def shorten_file_name(
+    file_name: str,
+    name_len: int=(os.get_terminal_size().columns - 10) // 5,
+) -> str:
+    """
+    Shorten file name for displaying on console.
 
-# A custom tqdm to display different progress bar in notebook and console.
-# Use: custom_tqdm.tqdm, custom_tqdm.trange, etc.
-custom_tqdm = notebook if _is_ipython_kernel() else tqdm
+    Parameters:
+        file_name (str): Name of the file.
+        name_len (int, optional): Maximum length allowed. Set to None (default) will use IMAGE_NAME_LEN above.
+    
+    Returns:
+        Shortened file name.
+    """
+
+    if len(file_name) < name_len:
+        return file_name
+    else:
+        return Path(file_name).stem[:(name_len - len('... '))] + '... ' + Path(file_name).suffix
 
 
 ##### Dir check
@@ -74,6 +83,7 @@ def save_dataclass(
         dataclass,
         file_name: str,
         file_type: Optional[str]=None,
+        encoding: str='UTF-8',
         log: Log=Log(),
     ) -> Optional[tuple[str, str]]:
     """
@@ -83,13 +93,15 @@ def save_dataclass(
     Parameters:
         dataclass (A dataclass): The dataclass to be saved.
         file_name (str): Name of file. Suffix (.json / .pkl) is optional.
+        file_type (str, Optional): If suffix not found in `file_name`, designate file type manually.
+        encoding (str): Encoding of JSON file (if saved as .json).
         log (crawler_utils.log.Log, optional): Logging config.
 
     Returns:
         (Saved file name, Absolute path of the saved file), or None if failed.
     """
     
-    path, filename = os.path.split(file_name)
+    path, file_name = os.path.split(file_name)
     check_dir(path, log)
     try:
         if file_type is None:
@@ -102,14 +114,14 @@ def save_dataclass(
         ftype = ftype.strip().replace('.', '').lower()
 
         if ftype == 'json':
-            f_name = os.path.join(path, f"{filename}.json")
+            f_name = os.path.join(path, f"{file_name}.json")
             f_name = f_name.replace(".json.json", ".json")  # If .json is already contained in file_name, skip it
-            with open(f_name, "w", encoding='UTF-8') as f:
+            with open(f_name, "w", encoding=encoding) as f:
                 json.dump(dataclasses.asdict(dataclass), f, indent=4, ensure_ascii=False)
                 log.info(f'{type(dataclass).__name__} dataclass has been saved at "{os.path.abspath(f_name)}"')
                 return f_name, os.path.abspath(f_name)
         elif ftype == 'pkl':
-            f_name = os.path.join(path, f"{filename}.pkl")
+            f_name = os.path.join(path, f"{file_name}.pkl")
             f_name = f_name.replace(".pkl.pkl", ".pkl")  # If .pkl is already contained in file_name, skip it
             with open(f_name, "wb") as f:
                 dill.dump(dataclass, f)
@@ -127,6 +139,7 @@ def load_dataclass(
         dataclass_to_load,
         file_name: str,
         file_type: Optional[str]=None,
+        encoding: str='UTF-8',
         log: Log=Log(),
     ) -> Any:
     """
@@ -136,6 +149,8 @@ def load_dataclass(
     Parameters:
         dataclass (A dataclass): The dataclass to be loaded.
         file_name (str): Name of the file.
+        file_type (str, Optional): If suffix not found in `file_name`, designate file type manually.
+        encoding (str): Encoding of JSON file (if loaded from .json).
         log (crawler_utils.log.Log, optional): Logging config.
 
     Returns:
@@ -153,7 +168,7 @@ def load_dataclass(
         ftype = ftype.strip().replace('.', '').lower()
         
         if ftype == 'json':
-            with open(file_name, "r", encoding='UTF-8') as f:
+            with open(file_name, "r", encoding=encoding) as f:
                 dataclass_dict = json.load(f)
                 for fields in dataclasses.fields(dataclass_to_load):
                     setattr(dataclass_to_load, fields.name, dataclass_dict[fields.name])
@@ -248,6 +263,8 @@ async def set_up_nodriver_browser(
 @contextmanager
 def suppress_print():
     """
+    Suppress built-in print so that it may not output anything.
+
     Use this function like:
     >>> with suppress_print():
     >>>     # suppressed print()

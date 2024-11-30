@@ -12,7 +12,7 @@ import asyncio
 
 from image_crawler_utils import CrawlerSettings
 from image_crawler_utils.log import Log
-from image_crawler_utils.utils import custom_tqdm
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
 
 from .constants import SCROLL_DELAY, SCROLL_NUM, DOWN_SCROLL_LENGTH, LOAD_SCROLL_LENGTH
 from .status_classes import TwitterStatus, TwitterStatusMedia
@@ -167,7 +167,8 @@ async def scrolling_to_find_status(
     reload_times: int=1,
     error_retry_delay: float=200,
     image_num_restriction: Optional[int]=None,
-    pbar_leave: bool=False,
+    progress_group: Optional[ProgressGroup]=None,
+    transient: bool=False,
 ) -> list[TwitterStatus]:
     """
     Scrolling to finding all Twitter / X status on current searching result page.
@@ -177,7 +178,8 @@ async def scrolling_to_find_status(
         tab (nodriver.Tab): nodriver.Tab with loaded searching result page.
         reload_times (int): To deal with (possible) missing status, reload pages for reload_times to get status results.
         error_retry_delay (float): When an error happens (especially Twitter / X returns an error), sleep error_retry_delay before reloading again.
-        pbar_leave (bool): Whether leaving tqdm progress bar after finishing.
+        progress_group (image_crawler_utils.progress_bar.ProgressGroup): The Group of Progress bars to be displayed in.
+        transient (bool): Hide Progress bars after finishing.
 
     Returns:
         A list of crawler_utils.stations.twitter.TwitterStatus class, sort by status from large to small.
@@ -190,108 +192,119 @@ async def scrolling_to_find_status(
     for reload_count in range(reload_times):
         not_from_retry_button = True
 
+        if progress_group is None:  # No father tasks are provided, create an separate progress
+            progress = CustomProgress(has_total=False, transient=transient)
+            progress.start()
+        else:
+            if transient:
+                progress = progress_group.sub_no_total_count_bar
+            else:
+                progress = progress_group.main_no_total_count_bar
+
+        task = progress.add_task(description=f'Loading [repr.number]{reload_count + 1}[reset]/[repr.number]{reload_times}[reset], scrolling times:')
+
         # Different from reload_count, retry_count only works when an error happens
         retry_count = 0
         while retry_count < crawler_settings.download_config.retry_times:
             try:
-                with custom_tqdm.tqdm(
-                    desc=f'Loading {reload_count + 1}/{reload_times}: Loading page...',
-                    bar_format=r'[{elapsed}] {desc}',  # Hide progress bar, leaving only description
-                    leave=pbar_leave,
-                ) as pbar:
+                # Loading until progress bar (rotating circle) disappears
+                await twitter_progress_bar_loading(tab)
+
+                if not_from_retry_button:  # If the page is new, do some initialization
+                    retry_count += 1
+                    attempt_status_list: list[TwitterStatus] = []  # Status retrieved in every retry
+                    len_attempt_status = -1
+                    scroll_count = 0
+                    media_count = 0
+                    await tab.scroll_up(1000)  # Sometimes it does not load from the first tweet. Scroll to top in case of this!
+                
+                # Check if it is empty
+                check = await twitter_empty_check(tab)
+                if check:
+                    crawler_settings.log.warning(f'Page \"{tab_url}\" contains no result.')
+                    return [], 0  # Exit directly
+                
+                # Check if there is an error
+                check = await twitter_error_check(tab)
+                if check:
+                    raise ConnectionRefusedError
+                
+                # Start scrolling down batch
+                while len(attempt_status_list) != len_attempt_status or not not_from_retry_button:  # When it is loaded from retry button, force the loop to run once
+                    len_attempt_status = len(attempt_status_list)
+
+                    if not_from_retry_button:  # When retry button is detected, the page had already scrolled down
+                        # Scroll down LOAD_SCROLL_LENGTH
+                        progress.update(task, advance=1)
+                        await tab.scroll_down(LOAD_SCROLL_LENGTH)
+                        crawler_settings.log.debug(f'Scrolled down {LOAD_SCROLL_LENGTH} at \"{tab_url}\"')
+
                     # Loading until progress bar (rotating circle) disappears
                     await twitter_progress_bar_loading(tab)
-    
-                    if not_from_retry_button:  # If the page is new, do some initialization
-                        retry_count += 1
-                        attempt_status_list: list[TwitterStatus] = []  # Status retrieved in every retry
-                        len_attempt_status = -1
-                        scroll_count = 0
-                        media_count = 0
-                        await tab.scroll_up(1000)  # Sometimes it does not load from the first tweet. Scroll to top in case of this!
-                    
-                    # Check if it is empty
-                    check = await twitter_empty_check(tab)
-                    if check:
-                        crawler_settings.log.warning(f'Page \"{tab_url}\" contains no result.')
-                        return [], 0  # Exit directly
                     
                     # Check if there is an error
                     check = await twitter_error_check(tab)
                     if check:
                         raise ConnectionRefusedError
-                    
-                    # Start scrolling down batch
-                    while len(attempt_status_list) != len_attempt_status or not not_from_retry_button:  # When it is loaded from retry button, force the loop to run once
-                        len_attempt_status = len(attempt_status_list)
 
-                        if not_from_retry_button:  # When retry button is detected, the page had already scrolled down
-                            # Scroll down LOAD_SCROLL_LENGTH
-                            pbar.update()
-                            await tab.scroll_down(LOAD_SCROLL_LENGTH)
-                            crawler_settings.log.debug(f'Scrolled down {LOAD_SCROLL_LENGTH} at \"{tab_url}\"')
+                    # Scroll up LOAD_SCROLL_LENGTH
+                    progress.update(task, advance=1)
+                    await tab.scroll_up(LOAD_SCROLL_LENGTH)
+                    crawler_settings.log.debug(f'Scrolled up {LOAD_SCROLL_LENGTH} at \"{tab_url}\"')
 
-                        # Loading until progress bar (rotating circle) disappears
-                        await twitter_progress_bar_loading(tab)
+                    # Only compare the results after SCROLL_NUM scrollings
+                    for i in range(SCROLL_NUM):
+                        await asyncio.sleep(SCROLL_DELAY)
+                        progress.update(task, advance=1)
+                        await tab.scroll_down(DOWN_SCROLL_LENGTH)
+                        crawler_settings.log.debug(f'Scrolled down {DOWN_SCROLL_LENGTH} at \"{tab_url}\"')
+                        scroll_count += 1
                         
-                        # Check if there is an error
-                        check = await twitter_error_check(tab)
-                        if check:
-                            raise ConnectionRefusedError
-    
-                        # Scroll up LOAD_SCROLL_LENGTH
-                        pbar.update()
-                        await tab.scroll_up(LOAD_SCROLL_LENGTH)
-                        crawler_settings.log.debug(f'Scrolled up {LOAD_SCROLL_LENGTH} at \"{tab_url}\"')
+                        # Twitter has f**king StaleElementReferenceException, which means you may retry several times to retrieve the element
+                        for j in range(crawler_settings.download_config.retry_times):
+                            try:
+                                current_status_list = await find_twitter_status(
+                                    tab=tab, 
+                                    log=crawler_settings.log,
+                                )
+                                
+                                break  # Successful, stop retrying
+                            except ConnectionRefusedError as e:  # An Twitter / X error happens!
+                                raise ConnectionRefusedError(e)
+                            except Exception as e:
+                                current_status_list = None
+                                error_msg = e
 
-                        # Only compare the results after SCROLL_NUM scrollings
-                        for i in range(SCROLL_NUM):
-                            await asyncio.sleep(SCROLL_DELAY)
-                            pbar.update()
-                            await tab.scroll_down(DOWN_SCROLL_LENGTH)
-                            crawler_settings.log.debug(f'Scrolled down {DOWN_SCROLL_LENGTH} at \"{tab_url}\"')
-                            scroll_count += 1
-                            
-                            # Twitter has f**king StaleElementReferenceException, which means you may retry several times to retrieve the element
-                            for j in range(crawler_settings.download_config.retry_times):
-                                try:
-                                    current_status_list = await find_twitter_status(
-                                        tab=tab, 
-                                        log=crawler_settings.log,
-                                    )
-                                    
-                                    break  # Successful, stop retrying
-                                except ConnectionRefusedError as e:  # An Twitter / X error happens!
-                                    raise ConnectionRefusedError(e)
-                                except Exception as e:
-                                    pbar.update()
-                                    current_status_list = None
-                                    error_msg = e
+                        if current_status_list is None:  # An error happened
+                            raise ConnectionError(error_msg)
+                        else:  # No error, status successfully got
+                            attempt_status_url_list = [status.status_url for status in attempt_status_list]
+                            for status in current_status_list:
+                                if status.status_url not in attempt_status_url_list:
+                                    attempt_status_list.append(status)
+                                    media_count += len(status.media_list)
 
-                            if current_status_list is None:  # An error happened
-                                raise ConnectionError(error_msg)
-                            else:  # No error, status successfully got
-                                attempt_status_url_list = [status.status_url for status in attempt_status_list]
-                                for status in current_status_list:
-                                    if status.status_url not in attempt_status_url_list:
-                                        attempt_status_list.append(status)
-                                        media_count += len(status.media_list)
+                        progress.update(task, description=f'Loading [repr.number]{reload_count + 1}[reset]/[repr.number]{reload_times}[reset], [repr.number]{len(attempt_status_list)}[reset] status & [repr.number]{media_count}[reset] {"images" if media_count > 1 else "image"} detected after scrolling times:')
 
-                            pbar.set_description_str(f'Loading {reload_count + 1}/{reload_times}: scrolled {scroll_count} {"times" if scroll_count > 1 else "time"}, {len(attempt_status_list)} status & {media_count} {"images" if media_count > 1 else "image"} detected...')
-
-                            # Reached restrictions on media num
-                            if image_num_restriction is not None and media_count >= image_num_restriction:
-                                crawler_settings.log.info(f'Collected {media_count} media {"images have" if media_count > 1 else "image has"} exceeded the restrictions on image num ({image_num_restriction} {"images" if image_num_restriction > 1 else "image"}).')
-                                len_attempt_status = len(attempt_status_list)  # Set this to break the outer loop
-                                break
-                        not_from_retry_button = True  # Current scrolling down finished
+                        # Reached restrictions on media num
+                        if image_num_restriction is not None and media_count >= image_num_restriction:
+                            crawler_settings.log.info(f'Collected {media_count} media {"images have" if media_count > 1 else "image has"} exceeded the restrictions on image num ({image_num_restriction} {"images" if image_num_restriction > 1 else "image"}).')
+                            len_attempt_status = len(attempt_status_list)  # Set this to break the outer loop
+                            break
+                    not_from_retry_button = True  # Current scrolling down finished
                         
                 break  # Succeeded, no retrying
             
             except ConnectionRefusedError:
                 restart_time = datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(seconds=error_retry_delay), '%H:%M:%S')
                 crawler_settings.log.warning(f'Twitter / X returns an error when loading \"{tab_url}\", next reloading will start {error_retry_delay} {"seconds" if error_retry_delay > 1 else "second"} later at {restart_time}.')
+
+                # Update progress bar to pausing
+                progress.update(task, description=f'[yellow bold](Pausing)[reset] Loading [repr.number]{reload_count + 1}[reset]/[repr.number]{reload_times}[reset], [repr.number]{len(attempt_status_list)}[reset] status & [repr.number]{media_count}[reset] {"images" if media_count > 1 else "image"} detected after scrolling times:')
                 await asyncio.sleep(error_retry_delay)
+                # Reset progress bar from pausing
+                progress.update(task, description=f'Loading [repr.number]{reload_count + 1}[reset]/[repr.number]{reload_times}[reset], [repr.number]{len(attempt_status_list)}[reset] status & [repr.number]{media_count}[reset] {"images" if media_count > 1 else "image"} detected after scrolling times:')
+                
                 try:  # Try clicking the retry button
                     main_structure = await tab.find('div[data-testid="primaryColumn"]')
                     error_element = await main_structure.query_selector('button[class="css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-2yi16 r-1qi8awa r-3pj75a r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"]')
@@ -310,6 +323,8 @@ async def scrolling_to_find_status(
                     await asyncio.sleep(crawler_settings.download_config.result_thread_delay)
                     await tab.get(tab_url)  # Refresh
                     not_from_retry_button = True
+
+        progress.finish_task(task, hide=transient)  # No matter success of failure, finish the task in this reload_count
 
         # Add status in this loading to the final_status_list
         final_status_url_list = [status.status_url for status in final_status_list]

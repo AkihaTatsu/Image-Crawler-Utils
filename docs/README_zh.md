@@ -12,7 +12,7 @@ Image Crawler Utils
 
 ## 关于本项目
 
-一个**相对可自定义**的图像爬取框架，允许使用多线程方法下载图像及其信息。如下GIF为运行[样例](../examples/example.py)在控制台上得到的结果：
+一个**相对可自定义**的图像爬取框架，允许使用多线程方法下载图像及其信息。如下GIF为一个爬取样例程序在控制台上得到的结果：
 
 ![](example.gif)
 
@@ -52,7 +52,7 @@ pip install image-crawler-utils
     + 从搜索结果中下载所有的图片
     + 下载某一用户发布的所有图片
 + 日志记录爬取程序的操作到控制台以及（可选的）文件中。
-+ 使用`tqdm`进度条表示爬取程序的进度（包含对Jupyter notebook的支持）。
++ 使用`rich`进度条和日志信息显示爬取程序的进度（包含对Jupyter Notebook的支持）。
 + 保存或读取爬取的设置与配置。
 + 保存或读取所有图片的信息，以便于未来的爬取。
 + 获取及管理部分网站的cookies，包括对其进行保存与读取。
@@ -96,6 +96,8 @@ crawler_settings = CrawlerSettings(
         show_error: bool=True,
         show_critical: bool=True,
     ),
+    # 日志设置
+    detailed_console_log: bool=False,
     # 自行使用时的额外参数
     extra_configs={
         "arg_name": "config", 

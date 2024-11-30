@@ -54,6 +54,8 @@ crawler_settings = CrawlerSettings(
     overwrite_images: bool=True,
     # 控制在控制台上显示信息的配置
     debug_config=DebugConfig.level("info"),
+    # 日志设置
+    detailed_console_log: bool=False,
     # 自行使用时的额外参数
     extra_configs={
         "arg_name": config, 
@@ -99,6 +101,8 @@ crawler_settings = CrawlerSettings(
     + 留空将会使用DownloadConfig中对应参数的默认值。
     + 也可以在设置一个DownloadConfig类之后，直接将其传入CrawlerSettings类的`download_config`参数中；这会覆盖以上参数的设置。
   + `debug_config`：应当为`image_crawler_utils.configs.DebugConfig`类，该参数控制消息在控制台上的显示级别。请参考[DebugConfig()](#debugconfig)章节。
++ `detailed_console_log`：向控制台输出详细版本的日志。
+  + 当输出到控制台时，总是使用`msg`（输出到文件的日志信息）即使`output_msg`存在（参见[类与函数（English）#Log](classes_and_functions.md#log)一章）。
 + `extra_configs`：一个可选的`dict`参数，在目前支持的网站和爬取任务中没有被使用。此参数为开发自定义的图像爬取程序而保留。
 
 由于控制台上显示的消息经过简化、通常不够完整，建议在运行爬取程序时添加日志文件。在设置完成CrawlerSettings后，使用`.set_logging_file()`添加一个日志文件句柄到当前爬取程序设置：
@@ -344,12 +348,14 @@ save_dataclass(
     dataclass,
     file_name: str,
     file_type: Optional[str]=None,
+    encoding: str='UTF-8',
     log: Log=Log(),
 )
 load_dataclass(
     dataclass_to_load,
     file_name: str,
     file_type: Optional[str]=None,
+    encoding: str='UTF-8',
     log: Log=Log(),
 )
 
@@ -372,10 +378,12 @@ load_dataclass(new_config, "download_config.pkl")
   + 设置`file_type`参数为`json`或`pkl`会强制函数将dataclass（配置）保存为该格式，或留空此参数会使得函数根据`file_name`决定保存的类型。
     + 即，`save_dataclass(dataclass, 'foo.json')`和`save_dataclass(dataclass, 'foo', 'json')`是等效的。
     + 当你的dataclass（配置）不包含无法JSON序列化的对象（例如一个函数）时，建议使用`.json`；同时，序列化数据文件`.pkl`支持大多数数据结构，但其文件不具有可读性。
+    + `encoding`只有在保存为`.json`文件时启用。
   + 在运行成功后，函数将会返回元组`(保存的文件名, 保存的文件的绝对路径)`，或者运行失败后返回`None`。
 + `load_dataclass()`会从指定文件中加载dataclass（配置）到`dataclass_to_load`参数对应的变量中。
   + 设置`file_type`参数为`json`或`pkl`会强制函数将加载的文件视为此类型，或留空此参数会使得函数根据`file_name`决定文件类型。
     + 即，`load_dataclass(dataclass, 'foo.json')`和`load_dataclass(dataclass, 'foo.json', 'json')`是等效的。
+    + `encoding`只有在以`.json`文件形式读取时启用。
   + `dataclass_to_load`中需要载入的变量应当和文件中保存的dataclass（配置）为同一个类。
   + 在运行成功后，函数将会返回加载文件内容后的`dataclass_to_load`，或者运行失败后返回`None`。
 + 参数`log`控制日志输出到控制台和记录到文件的级别。可以使用`log=crawler_settings.log`使其日志级别与你设置的CrawlerSettings相同。
@@ -564,10 +572,10 @@ from image_crawler_utils import Cookies
 cookies = Cookies.create_by(foo_cookies)
 
 # 保存一个Cookies
-cookies.save_to_json('cookies.json')
+cookies.save_to_json('cookies.json', encoding='UTF-8')
 
 # 读取一个Cookies
-new_cookies = Cookies.load_from_json('cookies.json')
+new_cookies = Cookies.load_from_json('cookies.json', encoding='UTF-8')
 ```
 
 两个Cookies类可以进行相加；如果二者中存在拥有相同的`name`属性的cookie，则后者中该`name`对应的cookie会被忽略。
@@ -674,10 +682,12 @@ from image_crawler_utils import save_image_infos, load_image_infos
 save_image_infos(
     image_info_list: Iterable[ImageInfo], 
     json_file: str,
+    encoding: str='UTF-8',
     log: Log=Log(),
 )
 image_info_list = load_image_infos(
     json_file: str,
+    encoding: str='UTF-8',
     log: Log=Log(),
 )
 

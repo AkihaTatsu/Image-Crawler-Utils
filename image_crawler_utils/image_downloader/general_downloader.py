@@ -7,6 +7,7 @@ from typing import Optional, Union
 from image_crawler_utils import Cookies
 from image_crawler_utils.configs import DownloadConfig
 from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import ProgressGroup
 
 from .core_downloader import download_image
 from .pixiv_downloader import pixiv_download_image_from_url
@@ -20,6 +21,7 @@ def download_image_from_url(
     log: Log=Log(),
     store_path: str="./",
     session: Optional[requests.Session]=None,
+    progress_group: Optional[ProgressGroup]=None,
     thread_id: int=0,
     cookies: Optional[Union[Cookies, list, dict, str]]=Cookies(),
 ) -> tuple[int, int]:
@@ -33,6 +35,7 @@ def download_image_from_url(
         log (config.Log): The logger.
         store_path (str): Path of image to be stored.
         session (requests.Session): A session that may contain cookies.
+        progress_group (image_crawler_utils.progress_bar.ProgressGroup): The Group of Progress bars to be displayed in.
         thread_id (int): Nth thread of image downloading.
         cookies (crawler_utils.cookies.Cookies, str, dict or list, optional): If session parameter is empty, use cookies to create a session with cookies.
 
@@ -56,6 +59,7 @@ def download_image_from_url(
             log=log,
             store_path=store_path,
             session=session,
+            progress_group=progress_group,
             thread_id=thread_id,
         )
     elif ("x.com" in url or "twitter.com" in url) and "/status/" in url:
@@ -66,6 +70,7 @@ def download_image_from_url(
             log=log,
             store_path=store_path,
             session=session,
+            progress_group=progress_group,
             thread_id=thread_id,
         )
 
@@ -84,6 +89,7 @@ def download_image_from_url(
         log=log,
         store_path=store_path,
         session=session,
+        progress_group=progress_group,
         thread_id=thread_id,
     )
     if is_success:

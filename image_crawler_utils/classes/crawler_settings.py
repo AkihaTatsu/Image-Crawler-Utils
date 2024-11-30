@@ -1,20 +1,21 @@
 from __future__ import annotations
 import dataclasses
 
-from pprint import pprint
 import requests
 import os
 import logging, traceback
 import dill, base64, hashlib
 from typing import Optional, Union
 from collections.abc import Callable
+from rich import print
 
 import nodriver
 import asyncio
 
 from image_crawler_utils.configs import DebugConfig, CapacityCountConfig, DownloadConfig
-from image_crawler_utils.log import Log, print_logging_msg
-from image_crawler_utils.utils import check_dir, custom_tqdm, Empty, set_up_nodriver_browser
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress
+from image_crawler_utils.utils import check_dir, Empty, set_up_nodriver_browser
 
 
 
@@ -41,6 +42,8 @@ class CrawlerSettings:
         max_download_time: Optional[float]=None,
         retry_times: int=5,
         overwrite_images: bool=True,
+        # Logging settings
+        detailed_console_log: bool=False,
         # ExtraConfig
         extra_configs: Optional[dict]=None,
     ):
@@ -66,6 +69,8 @@ class CrawlerSettings:
             max_download_time (float, optional): Maximum download time for a image. Set to None means no timeout.
             retry_times (int): Times of retrying to download.
             overwrite_images (bool): Overwrite existing images.
+
+            detailed_console_log (bool): When logging info to the console, always log `msg` (the messages logged into files) even if `output_msg` exists.
 
             extra_configs (dict, optional): A dict of custom configs.
 
@@ -101,7 +106,8 @@ class CrawlerSettings:
         self.log = Log(
             log_file=None,
             debug_config=self.__debug_config, 
-            logging_level=logging.DEBUG
+            logging_level=logging.DEBUG,
+            detailed_console_log=detailed_console_log,
         )
 
 
@@ -111,7 +117,7 @@ class CrawlerSettings:
     def set_logging_file(
         self,
         log_file: str,
-        logging_level: int=logging.DEBUG,
+        logging_level: Union[str, int]=logging.DEBUG,
     ):
         """
         Set logging to file.
@@ -157,8 +163,8 @@ class CrawlerSettings:
         Display all config info.
         Dataclasses will be displayed in a neater way.
         """
-
-        print_logging_msg("========== Current CrawlerSettings ==========", "debug")
+        
+        print("========== Current CrawlerSettings ==========")
 
         for config in [
             self.capacity_count_config,
@@ -182,7 +188,7 @@ class CrawlerSettings:
                     # Traditional print
                     try:
                         print(end='  ')
-                        pprint(config)
+                        print(config)
                     except Exception as e:
                         self.log.error(f"Failed to print extra configs - {var_name} because {e}")
         
@@ -194,10 +200,10 @@ class CrawlerSettings:
             print('    - ' + str(key) + ': ' + str(value))
         # Have logging file info
         if self.log.logging_file_handler():
-            print(f'  - Logging file: {self.log.logging_file_path()}')
+            print(f'  - Logging file: \"{self.log.logging_file_path()}\"')
             
         print('')
-        print_logging_msg("========== Crawler Settings Ending ==========", "debug")
+        print("========== Crawler Settings Ending ==========")
     
 
     # Connectivity test
@@ -246,11 +252,8 @@ class CrawlerSettings:
     ):
         self.log.info(f"Testing browser using url \"{url}\" ...")
         
-        with custom_tqdm.trange(
-            2,
-            desc=f'Loading browser components...',
-            leave=False,
-        ) as pbar:
+        with CustomProgress(has_spinner=True, transient=True) as progress:
+            task = progress.add_task(description='Loading browser components...', total=2)
             try:
                 browser = await set_up_nodriver_browser(
                     proxies=self.download_config.result_proxies,
@@ -259,8 +262,7 @@ class CrawlerSettings:
                     window_height=600,
                 )
 
-                pbar.update()
-                pbar.set_description(f"Requesting web page...")
+                progress.update(task, advance=1, description="Requesting webpage...")
             except Exception as e:
                 self.log.error(f"FAILED to set up browser components.\n{traceback.format_exc()}")
                 return False
@@ -268,22 +270,23 @@ class CrawlerSettings:
             try:
                 tab = await browser.get(url, new_tab=True)
                 await tab.sleep()
-                self.log.info(f'Browser is successfully loaded.')
-                pbar.update()
+                self.log.info(f'Webpage is successfully loaded.')
                 if not headless:
                     await asyncio.sleep(stay_time)
                 browser.stop()
+                self.log.info(f'Browser successfully closed.')
+                progress.update(task, advance=1, description="Process finished.")
                 return True
             except Exception as e:
-                pbar.update()
                 browser.stop()
                 self.log.error(f"FAILED to load the browser.\n{traceback.format_exc()}")
+                progress.update(task, advance=1, description="Process finished.")
                 return False
 
 
     def browser_test(
         self, 
-        url: Optional[str]=None, 
+        url: str, 
         headless: bool=True,
         stay_time: float=30,
     ):

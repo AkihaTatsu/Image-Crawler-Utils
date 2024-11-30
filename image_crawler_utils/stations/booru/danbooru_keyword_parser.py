@@ -8,7 +8,7 @@ import requests
 
 from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
 from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
-from image_crawler_utils.utils import custom_tqdm
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
 
 from .constants import SPECIAL_WEBSITES
 
@@ -55,7 +55,7 @@ class DanbooruKeywordParser(KeywordParser):
         self.use_keyword_include = use_keyword_include
 
 
-    def run(self):
+    def run(self) -> list[ImageInfo]:
         with requests.Session() as session:
             if not self.cookies.is_none():
                 session.cookies.update(self.cookies.cookies_dict)
@@ -117,10 +117,8 @@ class DanbooruKeywordParser(KeywordParser):
         min_page_num = None
 
         self.crawler_settings.log.info("Testing the page num of keyword (include) groups to find the one with fewest pages.")
-        with custom_tqdm.trange(
-            len(keyword_strings),
-            desc="Requesting pages",
-        ) as pbar:
+        with CustomProgress(transient=True) as progress:
+            task = progress.add_task(description="Requesting pages:", total=len(keyword_strings))
             for string in keyword_strings:
                 self.crawler_settings.log.debug(f'Testing the page num of keyword string: {string}')
                 self.keyword_string = string
@@ -129,7 +127,9 @@ class DanbooruKeywordParser(KeywordParser):
                 if min_page_num is None or page_num < min_page_num:
                     min_page_num = page_num
                     min_string = string
-                pbar.update()
+                progress.update(task, advance=1)
+
+            progress.update(task, description="[green]Requesting pages finished!")
 
         self.keyword_string = min_string
         self.crawler_settings.log.info(f'The keyword string the parser will use is "{self.keyword_string}" which has {min_page_num} {"pages" if min_page_num > 1 else "page"}.')
@@ -190,10 +190,9 @@ class DanbooruKeywordParser(KeywordParser):
         # Due to danbooru restrictions, page num beyond 1000 has to be accessed one by one
         if total_page_num > 1000:
             self.crawler_settings.log.info("Due to Danbooru restrictions, we are requesting pages with number over 1000 one by one. It may be slower and take more time.")
-            with custom_tqdm.trange(
-                total_page_num - 1000,
-                desc="Requesting extra pages",
-            ) as pbar:
+            with ProgressGroup(panel_title="Requesting Extra [yellow]Webpages[reset]") as progress_group:
+                progress = progress_group.main_count_bar
+                task = progress.add_task(description="Requesting extra pages:", total=total_page_num - 1000)
                 
                 # Decrease thread_delay for there is only one thread now
                 original_thread_delay = self.crawler_settings.download_config.thread_delay
@@ -220,7 +219,9 @@ class DanbooruKeywordParser(KeywordParser):
                         page_content_current = content
                         soup = BeautifulSoup(content, 'lxml')
                         next_page = soup.find("link", rel="next")
-                        pbar.update()
+                        progress.update(task, advance=1)
+                
+                progress.update(task, description="[green]Requesting extra pages finished!")
                 
                 # Restore the original thread_delay
                 self.crawler_settings.download_config.thread_delay = original_thread_delay
@@ -247,10 +248,10 @@ class DanbooruKeywordParser(KeywordParser):
         image_info_list = []
         parent_id_list = []
         inaccessible_image_num = 0
-        with custom_tqdm.trange(
-            len(page_content_list),
-            desc="Parsing image info pages",
-        ) as pbar:
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(page_content_list))
+
             for content in page_content_list:
                 image_info_dict = json.loads(content)
                 for info in image_info_dict:
@@ -347,7 +348,9 @@ class DanbooruKeywordParser(KeywordParser):
                             info=new_info,
                         ))
                
-                pbar.update()
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
                 
         if inaccessible_image_num > 0:
             self.crawler_settings.log.warning(f"{inaccessible_image_num} {'images are' if inaccessible_image_num > 1 else 'image is'} inaccessible. Check logging file for more details.")

@@ -6,6 +6,7 @@ from collections import ChainMap
 import requests
 
 from image_crawler_utils import Cookies, Parser, ImageInfo, CrawlerSettings
+from image_crawler_utils.progress_bar import ProgressGroup
 from image_crawler_utils.user_agent import UserAgent
 
 
@@ -49,7 +50,7 @@ class PixivUserParser(Parser):
         self.info_page_batch_delay = info_page_batch_delay
 
 
-    def run(self):
+    def run(self) -> list[ImageInfo]:
         if self.thread_delay == 0:  # Pixiv do not accept frequent requests!
             self.thread_delay = self.crawler_settings.download_config.thread_num * 1.0  # Set the delay to 1.0 * thread num
 
@@ -137,23 +138,33 @@ class PixivUserParser(Parser):
             headers=json_image_url_page_headers,
             # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
         )
+        
+        self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
-        for i in range(len(json_image_url_page_contents)):
-            parsed_content = json.loads(json_image_url_page_contents[i])
-            for image_url_size in parsed_content["body"]:
-                image_id = image_url_size["urls"]["original"].split('/')[-1].split('_')[0]
-                tags = [item["tag"] for item in image_info_dict[image_id]["tags"]["tags"]]
-                image_info_list.append(ImageInfo(
-                    url=image_url_size["urls"]["original"],
-                    name=image_url_size["urls"]["original"].split('/')[-1],
-                    info={
-                        "id": image_id,
-                        "width": image_url_size["width"],
-                        "height": image_url_size["height"],
-                        "tags": tags,
-                        "info": image_info_dict[image_id],
-                    },
-                ))
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(json_image_url_page_contents))
+            for content in json_image_url_page_contents:
+                if content is None:
+                    continue  # Empty page!
+                parsed_content = json.loads(content)
+                for image_url_size in parsed_content["body"]:
+                    image_id = image_url_size["urls"]["original"].split('/')[-1].split('_')[0]
+                    tags = [item["tag"] for item in image_info_dict[image_id]["tags"]["tags"]]
+                    image_info_list.append(ImageInfo(
+                        url=image_url_size["urls"]["original"],
+                        name=image_url_size["urls"]["original"].split('/')[-1],
+                        info={
+                            "id": image_id,
+                            "width": image_url_size["width"],
+                            "height": image_url_size["height"],
+                            "tags": tags,
+                            "info": image_info_dict[image_id],
+                        },
+                    ))
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
 
         self.image_info_list = image_info_list
         return self.image_info_list
@@ -184,20 +195,30 @@ class PixivUserParser(Parser):
             headers=json_image_url_page_headers,
             # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
         )
+
+        self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
-        for i in range(len(json_image_url_page_contents)):
-            parsed_content = json.loads(json_image_url_page_contents[i])
-            for image_url_size in parsed_content["body"]:
-                image_id = image_url_size["urls"]["original"].split('/')[-1].split('_')[0]
-                image_info_list.append(ImageInfo(
-                    url=image_url_size["urls"]["original"],
-                    name=image_url_size["urls"]["original"].split('/')[-1],
-                    info={
-                        "id": image_id,
-                        "width": image_url_size["width"],
-                        "height": image_url_size["height"],
-                    },
-                ))
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(json_image_url_page_contents))
+            for content in json_image_url_page_contents:
+                if content is None:
+                    continue  # Empty page!
+                parsed_content = json.loads(content)
+                for image_url_size in parsed_content["body"]:
+                    image_id = image_url_size["urls"]["original"].split('/')[-1].split('_')[0]
+                    image_info_list.append(ImageInfo(
+                        url=image_url_size["urls"]["original"],
+                        name=image_url_size["urls"]["original"].split('/')[-1],
+                        info={
+                            "id": image_id,
+                            "width": image_url_size["width"],
+                            "height": image_url_size["height"],
+                        },
+                    ))
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
 
         self.image_info_list = image_info_list
         return self.image_info_list

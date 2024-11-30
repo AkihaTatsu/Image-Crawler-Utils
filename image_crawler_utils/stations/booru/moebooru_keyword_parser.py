@@ -8,7 +8,7 @@ import requests
 
 from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
 from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
-from image_crawler_utils.utils import custom_tqdm
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
 
 from .constants import SPECIAL_WEBSITES
 
@@ -69,7 +69,7 @@ class MoebooruKeywordParser(KeywordParser):
         self.has_cloudflare = has_cloudflare
 
 
-    def run(self):
+    def run(self) -> list[ImageInfo]:
         if self.has_cloudflare:
             self.get_cloudflare_cookies()
         with requests.Session() as session:
@@ -141,10 +141,8 @@ class MoebooruKeywordParser(KeywordParser):
         min_page_num = None
 
         self.crawler_settings.log.info("Testing the page num of keyword (include) groups to find the one with fewest pages.")
-        with custom_tqdm.trange(
-            len(keyword_strings),
-            desc="Requesting pages",
-        ) as pbar:
+        with CustomProgress(transient=True) as progress:
+            task = progress.add_task(description="Requesting pages:", total=len(keyword_strings))
             for string in keyword_strings:
                 self.crawler_settings.log.debug(f'Testing the page num of keyword string: {string}')
                 self.keyword_string = string
@@ -153,7 +151,9 @@ class MoebooruKeywordParser(KeywordParser):
                 if min_page_num is None or page_num < min_page_num:
                     min_page_num = page_num
                     min_string = string
-                pbar.update()
+                progress.update(task, advance=1)
+
+            progress.update(task, description="[green]Requesting pages finished!")
 
         self.keyword_string = min_string
         self.crawler_settings.log.info(f'The keyword string the parser will use is "{self.keyword_string}" which has {min_page_num} {"pages" if min_page_num > 1 else "page"}.')
@@ -210,10 +210,9 @@ class MoebooruKeywordParser(KeywordParser):
         last_json_page_num = self.last_gallery_page_num * self.image_num_per_gallery_page // self.image_num_per_json
         extra_page_num = 0
 
-        with custom_tqdm.tqdm(
-            bar_format=r'{desc}',
-        ) as pbar:
-            pbar.set_description_str(f"Preparing for detection...")
+        with ProgressGroup(panel_title="Detecting Hidden [yellow]Webpages[reset]") as progress_group:
+            progress = progress_group.main_no_total_count_bar
+            task = progress.add_task(description=f"Preparing for detection...")
             # Preparations
             content = self.request_page_content(
                 f"{self.station_url}post.json?api_version=2&limit={self.image_num_per_json}&tags={self.keyword_string}&page={last_json_page_num}",
@@ -223,7 +222,6 @@ class MoebooruKeywordParser(KeywordParser):
 
             # Start detecting
             while len(content_dict) > 0:
-                pbar.set_description_str(f"{extra_page_num} {'pages' if extra_page_num > 1 else 'page'} (having about {extra_page_num * self.image_num_per_json} {'images' if extra_page_num > 0 else 'image'}) detected.")
                 last_json_page_num += 1
                 extra_page_num += 1
                 content = self.request_page_content(
@@ -231,6 +229,10 @@ class MoebooruKeywordParser(KeywordParser):
                     session=session,
                 )
                 content_dict = json.loads(content)["posts"]
+
+                progress.update(task, advance=1, description=f"Detected page number (with about [repr.number]{extra_page_num * self.image_num_per_json}[reset] {'images' if extra_page_num > 0 else 'image'}):")
+            
+            progress.update(task, description=f"[green]Detection finished![reset] Number of pages (with about [repr.number]{extra_page_num * self.image_num_per_json}[reset] {'images' if extra_page_num > 0 else 'image'}) detected:")
 
         self.last_json_page_num = last_json_page_num - 1 if last_json_page_num >= 1 else 0
 
@@ -264,10 +266,10 @@ class MoebooruKeywordParser(KeywordParser):
         self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
         parent_id_list = []
-        with custom_tqdm.trange(
-            len(page_content_list),
-            desc="Parsing image info pages",
-        ) as pbar:
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(page_content_list))
+
             for content in page_content_list:
                 image_info_dict = json.loads(content)["posts"]
                 for info in image_info_dict:
@@ -348,14 +350,16 @@ class MoebooruKeywordParser(KeywordParser):
                             info=new_info,
                         ))
                
-                pbar.update()
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
 
         self.parent_id_list = list(set(parent_id_list))
         self.image_info_list = image_info_list
         return self.image_info_list
 
 
-    ##### Method II: Using directly parsed web pages
+    ##### Method II: Using directly parsed webpages
 
 
     def get_gallery_page_urls(self) -> list[str]:
@@ -383,10 +387,10 @@ class MoebooruKeywordParser(KeywordParser):
         self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
         parent_id_list = []
-        with custom_tqdm.trange(
-            len(page_content_list),
-            desc="Parsing image info pages",
-        ) as pbar:
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(page_content_list))
+
             for content in page_content_list:
                 tag_dict = json.loads(re.search(r'Post.register_tags\(.*\)', content).group()[len('Post.register_tags('):-len(')')])
                 image_info_dict = [json.loads(res[len('Post.register('):-len(')')]) for res in re.findall(r'Post.register\(.*\)', content)]
@@ -472,7 +476,9 @@ class MoebooruKeywordParser(KeywordParser):
                             info=new_info,
                         ))
                
-                pbar.update()
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
 
         self.parent_id_list = list(set(parent_id_list))
         self.image_info_list = image_info_list

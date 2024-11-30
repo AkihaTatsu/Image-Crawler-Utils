@@ -6,7 +6,8 @@ import asyncio
 
 from image_crawler_utils import Cookies
 from image_crawler_utils.log import Log
-from image_crawler_utils.utils import custom_tqdm, set_up_nodriver_browser
+from image_crawler_utils.progress_bar import CustomProgress
+from image_crawler_utils.utils import set_up_nodriver_browser
 
 
 
@@ -18,11 +19,10 @@ async def __get_pixiv_cookies(
     log: Log=Log(),
 ) -> Optional[Cookies]:
     log.info(f"Getting cookies by logging in to https://www.pixiv.net/ ...")
-    with custom_tqdm.trange(
-        3,
-        desc=f'Loading browser components...',
-        leave=False,
-    ) as pbar:
+    
+    with CustomProgress(has_spinner=True, transient=True) as progress:
+        task = progress.add_task(total=3, description='Loading browser components...')
+                    
         try:
             browser = await set_up_nodriver_browser(
                 proxies=proxies,
@@ -31,8 +31,7 @@ async def __get_pixiv_cookies(
                 window_height=600,
             )
             
-            pbar.update()
-            pbar.set_description(f"Loading login page...")
+            progress.update(task, advance=1, description="Loading login page...")
 
             tab = await browser.get("https://accounts.pixiv.net/login?lang=en", new_tab=True)
             user_input = await tab.find('input[placeholder="E-mail address or pixiv ID"]', timeout=30)
@@ -45,9 +44,8 @@ async def __get_pixiv_cookies(
             if pixiv_id is not None and password is not None:
                 log_in_button = await tab.find("Log In")
                 await log_in_button.click()
-
-            pbar.update()
-            pbar.set_description(f"Trying to login...")
+            
+            progress.update(task, advance=1, description="Trying to login...")
 
             while True:  # As long as no successful loggin in, continue this loop
                 try:
@@ -55,9 +53,8 @@ async def __get_pixiv_cookies(
                     break
                 except:
                     continue
-            
-            pbar.update()
-            pbar.set_description(f"Parsing cookies...")
+
+            progress.update(task, advance=1, description="Parsing cookies...")
 
             cookies_nodriver = await browser.cookies.get_all()
             cookies = Cookies.create_by(cookies_nodriver)

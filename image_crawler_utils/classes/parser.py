@@ -7,7 +7,7 @@ import time, datetime
 from typing import Optional, Union
 from collections.abc import Iterable, Callable
 import os, dill
-from pprint import pprint
+from rich import print
 
 from urllib import parse
 from concurrent import futures
@@ -16,8 +16,9 @@ import nodriver
 
 from image_crawler_utils import Cookies
 from image_crawler_utils.keyword import KeywordLogicTree, construct_keyword_tree
-from image_crawler_utils.log import print_logging_msg, Log
-from image_crawler_utils.utils import custom_tqdm, check_dir, Empty, set_up_nodriver_browser
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import check_dir, Empty, set_up_nodriver_browser
 
 from .crawler_settings import CrawlerSettings
 from .image_info import ImageInfo
@@ -43,8 +44,8 @@ class Parser(ABC):
         Attributes:
             run(): Running the parser. Return total image size and succeeded, failed and skipped ImageInfo list.
             display_all_configs(): Display all configs of parser.
-            request_page_content(): Download web page content using configs in Parser.
-            threading_request_page_content(): Downloading a list of web page contents.
+            request_page_content(): Download webpage content using configs in Parser.
+            threading_request_page_content(): Downloading a list of webpage contents.
         """
         super().__init__()
         self.crawler_settings = crawler_settings
@@ -77,7 +78,7 @@ class Parser(ABC):
         Dataclasses will be displayed in a neater way.
         """
 
-        print_logging_msg("========== Current Parser Config ==========", "debug")
+        print("========== Current Parser Config ==========")
 
         # Basic info
         try:
@@ -87,9 +88,9 @@ class Parser(ABC):
                 print(f"  - Cookies: None")
             else:
                 print(f"  - Cookies:")
-                pprint(self.cookies.cookies_selenium)
+                print(self.cookies.cookies_selenium)
         except Exception as e:
-            print_logging_msg(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
+            print(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
 
         # Other info
         if set(self.__init__.__code__.co_varnames) != set(KeywordParser.__init__.__code__.co_varnames):
@@ -100,11 +101,11 @@ class Parser(ABC):
                     print(f"  - {varname}: {getattr(self, varname)}")
 
         print('')
-        print_logging_msg("CrawlerSettings used:", "debug")
+        print("CrawlerSettings used:")
         self.crawler_settings.display_all_configs()
             
         print('')
-        print_logging_msg("========== Parser Config Ending ==========", "debug")
+        print("========== Parser Config Ending ==========")
 
 
     def save_to_pkl(
@@ -164,7 +165,7 @@ class Parser(ABC):
             return None
 
 
-    # Get web page content
+    # Get webpage content
     def request_page_content(
         self, 
         url: str, 
@@ -173,7 +174,7 @@ class Parser(ABC):
         thread_delay: Union[None, float, Callable]=None,
     ) -> str:
         """
-        Download web page content.
+        Download webpage content.
 
         Parameters:
             url (str): The URL of the page to download.
@@ -182,7 +183,7 @@ class Parser(ABC):
             thread_delay: Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
         
         Returns:
-            The HTML content of the web page.
+            The HTML content of the webpage.
         """
 
         self.crawler_settings.log.debug(f'Try connecting to \"{url}\"')
@@ -262,7 +263,7 @@ class Parser(ABC):
         batch_delay: Union[float, Callable]=0.0,
     ) -> list[str]:
         """
-        Download multiple web page content using threading.
+        Download multiple webpage content using threading.
 
         Parameters:
             url_list (list[str]): The list of URLs of the page to download.
@@ -275,7 +276,7 @@ class Parser(ABC):
             batch_delay: Delaying time (seconds) after each batch is downloaded. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
         
         Returns:
-            A list of the HTML contents of the web pages. Its order is the same as the one of url_list.
+            A list of the HTML contents of the webpages. Its order is the same as the one of url_list.
         """
 
         page_num = len(url_list)
@@ -292,7 +293,7 @@ class Parser(ABC):
 
         page_content_dict_with_thread_id = {}
         
-        self.crawler_settings.log.info(f"Total web page num: {page_num}")
+        self.crawler_settings.log.info(f"Total webpage num: {page_num}")
         if page_num > 0:
             if batch_num is None:
                 batch_num = page_num
@@ -302,10 +303,8 @@ class Parser(ABC):
                 batched_headers = [l_headers[k * batch_num:min((k + 1) * batch_num, page_num)] 
                                    for k in range((page_num - 1) // batch_num + 1)]
 
-            with custom_tqdm.trange(
-                page_num,
-                desc="Downloading web pages",
-            ) as pbar:
+            with ProgressGroup(panel_title="Downloading [yellow]Webpages[reset]") as progress_group:
+                task = progress_group.main_count_bar.add_task("Downloading webpages:", total=page_num)
                 for j in range(len(batched_url_list)):
                     with futures.ThreadPoolExecutor(self.crawler_settings.download_config.thread_num) as executor:
                         # Start downloading
@@ -332,19 +331,26 @@ class Parser(ABC):
                             if thread.result() is not None:
                                 # Successful download
                                 page_content_dict_with_thread_id[thread.result()[1]] = thread.result()[0]
-                                pbar.update()
+                                progress_group.main_count_bar.update(task, advance=1)
                             else:
                                 # Failed download
-                                pbar.update()
+                                progress_group.main_count_bar.update(task, advance=1)
                 
                     if (j + 1) * batch_num < page_num:
                         current_batch_delay = batch_delay() if callable(batch_delay) else batch_delay
                         restart_time = datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(seconds=current_batch_delay), '%H:%M:%S')
                         self.crawler_settings.log.info(f"A batch of {len(batched_url_list[j])} {'page' if len(batched_url_list) <= 1 else 'pages'} has been downloaded. Waiting {current_batch_delay} {'second' if current_batch_delay <= 1 else 'seconds'} before resuming at {restart_time}.")
-                        time.sleep(current_batch_delay)
 
+                        # Update progress bar to pausing
+                        progress_group.main_count_bar.update(task, description=f"[yellow bold](Pausing)[reset] Downloading webpages:")
+                        time.sleep(current_batch_delay)
+                        # Reset progress bar from pausing
+                        progress_group.main_count_bar.update(task, description=f"Downloading webpages:")
+
+                # Finished normally, set progress bar to finished state
+                progress_group.main_count_bar.update(task, description=f"[green]Downloading webpages finished!")
         else:
-            self.crawler_settings.log.warning(f"No new web pages are to be downloaded.")
+            self.crawler_settings.log.warning(f"No new webpages are to be downloaded.")
 
         # Return corresponding page result according to their order in URLs
         page_content_list = [page_content_dict_with_thread_id[i]
@@ -364,11 +370,8 @@ class Parser(ABC):
         self.crawler_settings.log.info(f"Loading browser to get Cloudflare cookies from {test_url}.")
         
         # Pass Cloudflare verification
-        with custom_tqdm.trange(
-            2,
-            desc=f'Loading browser components...',
-            leave=False,
-        ) as pbar:
+        with CustomProgress(has_spinner=True, transient=True) as progress:
+            task = progress.add_task(description='Loading browser components...', total=2)
             try:
                 browser = await set_up_nodriver_browser(
                     proxies=self.crawler_settings.download_config.result_proxies,
@@ -377,8 +380,7 @@ class Parser(ABC):
                     window_height=600,
                 )
                 
-                pbar.update()
-                pbar.set_description(f"Loading Cloudflare page and try bypassing it...")
+                progress.update(task, advance=1, description="Loading Cloudflare page and try passing it...")
 
                 tab = await browser.get(test_url, new_tab=True)
                 start_timestamp = datetime.datetime.now()
@@ -394,10 +396,12 @@ class Parser(ABC):
                 except:
                     pass
                 
-                pbar.update()
+                progress.update(task, advance=1, description="[green]Cloudflare page successfully passed!")
+                progress.finish_task(task)
             except Exception as e:
                 output_msg_base = f"Failed to get Cloudflare cookies"
                 self.crawler_settings.log.error(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}")
+                progress.finish_task(task)
                 return
             
         # Get user agent and cookies
@@ -423,6 +427,7 @@ class Parser(ABC):
         except Exception as e:
             output_msg_base = f"Failed to parse user agent or Cookies"
             self.crawler_settings.log.error(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}")
+            browser.stop()
 
         
     def get_cloudflare_cookies(
@@ -520,7 +525,7 @@ class KeywordParser(Parser):
         Dataclasses will be displayed in a neater way.
         """
         
-        print_logging_msg("========== Current KeywordParser Config ==========", "debug")
+        print("========== Current KeywordParser Config ==========")
 
         # Basic info
         print('\nBasic Info:')
@@ -533,9 +538,9 @@ class KeywordParser(Parser):
                 print(f"  - Cookies: None")
             else:
                 print(f"  - Cookies:")
-                pprint(self.cookies.cookies_selenium)
+                print(self.cookies.cookies_selenium)
         except Exception as e:
-            print_logging_msg(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
+            print(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
 
         # Other info
         if set(self.__init__.__code__.co_varnames) != set(KeywordParser.__init__.__code__.co_varnames):
@@ -546,11 +551,11 @@ class KeywordParser(Parser):
                     print(f"  - {varname}: {getattr(self, varname)}")
 
         print('')
-        print_logging_msg("CrawlerSettings used:", "debug")
+        print("CrawlerSettings used:")
         self.crawler_settings.display_all_configs()
             
         print('')
-        print_logging_msg("========== Keyword Parser Config Ending ==========", "debug")
+        print("========== Keyword Parser Config Ending ==========")
 
 
     # Generate standard keyword string

@@ -13,7 +13,8 @@ import nodriver
 from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
 from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
 from image_crawler_utils.user_agent import UserAgent
-from image_crawler_utils.utils import custom_tqdm, set_up_nodriver_browser
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import set_up_nodriver_browser
 
 from .constants import PIXIV_IMAGE_NUM_PER_JSON, PIXIV_MAX_JSON_PAGE_NUM
 from .search_settings import PixivSearchSettings
@@ -71,7 +72,7 @@ class PixivKeywordParser(KeywordParser):
         self.headless = headless
 
 
-    def run(self):
+    def run(self) -> list[ImageInfo]:
         if self.keyword_string is None:
             if self.use_keyword_include:
                 self.generate_keyword_string_include()
@@ -135,10 +136,8 @@ class PixivKeywordParser(KeywordParser):
         min_image_num = None
 
         self.crawler_settings.log.info("Testing the image num of keyword (include) groups to find the one with fewest pages.")
-        with custom_tqdm.trange(
-            len(keyword_strings),
-            desc="Requesting pages",
-        ) as pbar:
+        with CustomProgress(transient=True) as progress:
+            task = progress.add_task(description="Requesting pages:", total=len(keyword_strings))
             for string in keyword_strings:
                 self.crawler_settings.log.debug(f'Testing the image num of keyword string: {string}')
                 self.keyword_string = string
@@ -147,7 +146,9 @@ class PixivKeywordParser(KeywordParser):
                 if min_image_num is None or image_num < min_image_num:
                     min_image_num = image_num
                     min_string = string
-                pbar.update()
+                progress.update(task, advance=1)
+
+            progress.update(task, description="[green]Requesting pages finished!")
                 
         self.keyword_string = min_string
         self.crawler_settings.log.info(f'The keyword string the parser will use is "{self.keyword_string}" which has {min_image_num} {"images" if min_image_num > 1 else "image"}.')
@@ -162,11 +163,9 @@ class PixivKeywordParser(KeywordParser):
                 self.crawler_settings.log.info(f'Connecting to the first gallery page using keyword string "{self.keyword_string}" ...')
                 first_page_url = parse.quote(f"{self.station_url}{self.pixiv_search_settings.build_search_appending_str_website(self.keyword_string)}", safe='/:?=&')
 
-                with custom_tqdm.trange(
-                    3,
-                    desc=f'Loading browser components...',
-                    leave=False,
-                ) as pbar:
+                with CustomProgress(has_spinner=True, transient=True) as progress:
+                    task = progress.add_task(total=3, description='Loading browser components...')
+                    
                     # Connect once to get cookies
                     try:
                         self.crawler_settings.log.debug(f"Parsing Pixiv page: \"{first_page_url}\"")
@@ -175,8 +174,7 @@ class PixivKeywordParser(KeywordParser):
                             headless=self.headless,
                         )
 
-                        pbar.update()
-                        pbar.set_description(f"Requesting page once...")
+                        progress.update(task, advance=1, description="Requesting page once...")
 
                         tab = await browser.get(first_page_url, new_tab=True)
                         await tab.find('img[alt="pixiv"]', timeout=30)
@@ -188,14 +186,16 @@ class PixivKeywordParser(KeywordParser):
                     
                     # Connect twice to get images
                     try:
-                        pbar.update()
-                        pbar.set_description(f"Requesting page again with cookies...")
+                        progress.update(task, advance=1, description="Requesting page again with cookies...")
 
                         await tab.get(first_page_url)
                         image_num_element = await tab.find('span[class="sc-1pt8s3a-10 bjcknB"]', timeout=30)
-                        pbar.update()
+                        
+                        progress.update(task, advance=1, description="[green]Requesting finished!")
+                        progress.finish_task(task)
                         browser.stop()
                     except Exception as e:
+                        progress.finish_task(task)
                         browser.stop()
                         raise ConnectionError(f"{e}")
                 
@@ -310,23 +310,33 @@ class PixivKeywordParser(KeywordParser):
             headers=json_image_url_page_headers,
             # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
         )
+        
+        self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
-        for i in range(len(json_image_url_page_contents)):
-            parsed_content = json.loads(json_image_url_page_contents[i])
-            for image_url_size in parsed_content["body"]:
-                image_id = image_url_size["urls"]["original"].split('/')[-1].split('_')[0]
-                tags = [item["tag"] for item in image_info_dict[image_id]["tags"]["tags"]]
-                image_info_list.append(ImageInfo(
-                    url=image_url_size["urls"]["original"],
-                    name=image_url_size["urls"]["original"].split('/')[-1],
-                    info={
-                        "id": image_id,
-                        "width": image_url_size["width"],
-                        "height": image_url_size["height"],
-                        "tags": tags,
-                        "info": image_info_dict[image_id],
-                    },
-                ))
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(json_image_url_page_contents))
+            for content in json_image_url_page_contents:
+                if content is None:
+                    continue  # Empty page!
+                parsed_content = json.loads(content)
+                for image_url_size in parsed_content["body"]:
+                    image_id = image_url_size["urls"]["original"].split('/')[-1].split('_')[0]
+                    tags = [item["tag"] for item in image_info_dict[image_id]["tags"]["tags"]]
+                    image_info_list.append(ImageInfo(
+                        url=image_url_size["urls"]["original"],
+                        name=image_url_size["urls"]["original"].split('/')[-1],
+                        info={
+                            "id": image_id,
+                            "width": image_url_size["width"],
+                            "height": image_url_size["height"],
+                            "tags": tags,
+                            "info": image_info_dict[image_id],
+                        },
+                    ))
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
 
         self.image_info_list = image_info_list
         return self.image_info_list
@@ -357,23 +367,33 @@ class PixivKeywordParser(KeywordParser):
             headers=json_image_url_page_headers,
             # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
         )
+
+        self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
-        for i in range(len(json_image_url_page_contents)):
-            parsed_content = json.loads(json_image_url_page_contents[i])
-            for image_url_size in parsed_content["body"]:
-                image_id = image_url_size["urls"]["original"].split('/')[-1].split('_')[0]
-                tags = self.json_basic_info[image_id]["tags"]
-                image_info_list.append(ImageInfo(
-                    url=image_url_size["urls"]["original"],
-                    name=image_url_size["urls"]["original"].split('/')[-1],
-                    info={
-                        "id": image_id,
-                        "width": image_url_size["width"],
-                        "height": image_url_size["height"],
-                        "tags": tags,
-                        "info": self.json_basic_info[image_id],
-                    },
-                ))
-        
+        with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
+            progress = progress_group.main_count_bar
+            task = progress.add_task(description="Parsing image info pages:", total=len(json_image_url_page_contents))
+            for content in json_image_url_page_contents:
+                if content is None:
+                    continue  # Empty page!
+                parsed_content = json.loads(content)
+                for image_url_size in parsed_content["body"]:
+                    image_id = image_url_size["urls"]["original"].split('/')[-1].split('_')[0]
+                    tags = self.json_basic_info[image_id]["tags"]
+                    image_info_list.append(ImageInfo(
+                        url=image_url_size["urls"]["original"],
+                        name=image_url_size["urls"]["original"].split('/')[-1],
+                        info={
+                            "id": image_id,
+                            "width": image_url_size["width"],
+                            "height": image_url_size["height"],
+                            "tags": tags,
+                            "info": self.json_basic_info[image_id],
+                        },
+                    ))
+                progress.update(task, advance=1)
+            
+            progress.update(task, description="[green]Parsing image info pages finished!")
+
         self.image_info_list = image_info_list
         return self.image_info_list

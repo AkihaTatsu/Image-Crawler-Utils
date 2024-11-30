@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 import time
 import random
 
@@ -11,9 +10,8 @@ import traceback
 
 from image_crawler_utils.configs import DownloadConfig
 from image_crawler_utils.log import Log
-from image_crawler_utils.utils import custom_tqdm, check_dir
-
-from .constants import IMAGE_NAME_LEN
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import check_dir, shorten_file_name
 
 
 
@@ -26,6 +24,7 @@ def download_image(
     log: Log=Log(),
     store_path: str='./',
     session: Optional[requests.Session]=requests.Session(),
+    progress_group: Optional[ProgressGroup]=None,
     thread_id: int=0,
 ) -> tuple[bool, int]:
     """
@@ -40,6 +39,7 @@ def download_image(
         log (config.Log): The logger.
         store_path (str): Path of image to be stored.
         session (requests.Session): A session that may contain cookies.
+        progress_group (image_crawler_utils.progress_bar.ProgressGroup): The Group of Progress bars to be displayed in.
         thread_id (int): Nth thread of image downloading.
 
     Returns:
@@ -57,6 +57,7 @@ def download_image(
 
     # Try several times
     for i in range(download_config.retry_times):
+
         try:                    
             # Set configs
             download_time = download_config.max_download_time
@@ -80,28 +81,26 @@ def download_image(
 
             # Check result
             if response.status_code == requests.status_codes.codes.ok:  # Success
-                if "content-length" in response.headers.keys():  # Has content-length
+                if "content-length" in response.headers.keys() and response.headers["content-length"].isdigit():  # Has content-length
+                    # Set up progress bar
+                    if progress_group is None:  # No father tasks are provided, create an separate progress
+                        progress = CustomProgress(is_file=True, transient=True)
+                        progress.start()
+                    else:
+                        progress = progress_group.sub_file_bar
+
                     image_size = int(response.headers["content-length"])
                     downloaded_size = 0
                     
-                    if len(image_name) < IMAGE_NAME_LEN:
-                        display_image_name = image_name
-                    else:
-                        display_image_name = Path(image_name).stem[:(IMAGE_NAME_LEN - len('... '))] + '... ' + Path(image_name).suffix
+                    display_image_name = shorten_file_name(image_name)
 
-                    with open(image_path, "wb") as f:       
-                        with custom_tqdm.tqdm(
-                            desc=f'Thread {thread_id}, {display_image_name}',
-                            total=image_size,
-                            unit='B',
-                            unit_scale=True,
-                            unit_divisor=1024,
-                            leave=False,
-                        ) as pbar:
-                            for data in response.iter_content(chunk_size=1024):
-                                size = f.write(data)
-                                downloaded_size += size
-                                pbar.update(size)
+                    # Loading progress bar
+                    task = progress.add_task(f'- Thread [repr.number]{thread_id}[reset], [white bold]{display_image_name}[reset]:', total=image_size)
+                    with open(image_path, "wb") as f:
+                        for data in response.iter_content(chunk_size=32768):
+                            size = f.write(data)
+                            downloaded_size += size
+                            progress.update(task, advance=size)
 
                         # Detect incomplete image
                         if downloaded_size != image_size:
@@ -109,33 +108,32 @@ def download_image(
                             log.warning(f'"{image_name}" downloaded at attempt {i + 1} is incomplete. Retry downloading.')
                             continue
 
+                    progress.finish_task(task)  # Hide progress bar
+
                 else:  # Failed to get content-length
                     log.debug(f'"content-length" not found in response.headers.keys() for {image_name} from \"{url}\"')
                     downloaded_size = 0
 
-                    if len(image_name) < IMAGE_NAME_LEN:
-                        display_image_name = image_name
+                    # Set up progress bar
+                    if progress_group is None:  # No father tasks are provided, create an separate progress
+                        progress = CustomProgress(has_total=False, is_file=True, transient=True)
+                        progress.start()
                     else:
-                        display_image_name = Path(image_name).stem[:(IMAGE_NAME_LEN - len('... '))] + '... ' + Path(image_name).suffix
+                        progress = progress_group.sub_no_total_file_bar
+                        
+                    display_image_name = shorten_file_name(image_name)
 
+                    # Loading progress bar
+                    task = progress.add_task(f'- Thread [repr.number]{thread_id}[reset], [white bold]{display_image_name}[reset]:')
                     with open(image_path, "wb") as f:       
-                        with custom_tqdm.tqdm(
-                            desc=f'Thread {thread_id}, {display_image_name}',
-                            bar_format=r'{desc}, time used: {elapsed}',
-                            leave=False,
-                        ) as pbar:
-                            for data in response.iter_content(chunk_size=1024):
-                                size = f.write(data)
-                                downloaded_size += size
-                                pbar.update(size)
-                                if downloaded_size < 2**20:
-                                    display_size = "{:.2f} kB".format(downloaded_size / 2**10)
-                                else:
-                                    display_size = "{:.2f} MB".format(downloaded_size / 2**20)
-                                pbar.set_description_str(f"Thread {thread_id}, {display_image_name}: {display_size} downloaded")
-                    
+                        for data in response.iter_content(chunk_size=1024):
+                            size = f.write(data)
+                            downloaded_size += size
+                            progress.update(task, advance=size)
+
                     image_size = downloaded_size  # Size of images is the size of downloaded contents
-                
+                    progress.finish_task(task)  # Hide progress bar
+
                 # Overwrite images
                 if os.path.exists(original_image_path):
                     log.debug(f"{os.path.abspath(original_image_path)} will be overwritten.")
