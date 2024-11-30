@@ -76,6 +76,7 @@ async def __get_image_from_status(
             empty_element = await main_structure.query_selector('div[data-testid="error-detail"]')
         finally:
             if empty_element is not None:
+                progress.finish_task(task)
                 raise FileExistsError("This Twitter / X page does not exist, or not accessible without an account.")
 
     # Check if the tweet itself is banned (comment tweets may exist)
@@ -85,6 +86,7 @@ async def __get_image_from_status(
         banned_element = await main_structure.query_selector('a[href="https:\\/\\/help.twitter.com\\/rules-and-policies\\/notices-on-twitter"]')
     finally:
         if banned_element is not None:
+            progress.finish_task(task)
             raise FileExistsError("This Twitter / X page does not exist because the status or user violated Twitter / X rules and policies.")
     
     # Try parsing image elements
@@ -95,6 +97,7 @@ async def __get_image_from_status(
                             if ('src' in element.attrs.keys()
                                 and "pbs.twimg.com/media" in element.attrs['src'])]
         if len(available_src) == 0:
+            progress.finish_task(task)
             raise FileNotFoundError("Images not found on Twitter / X status.")
 
         progress.finish_task(task)
@@ -103,7 +106,6 @@ async def __get_image_from_status(
         progress.finish_task(task)
         browser.stop()
         raise FileNotFoundError(f"{e}")
-        
         
     return available_src
 

@@ -89,9 +89,21 @@ class PixivUserParser(Parser):
             session=session,
             headers=json_user_page_headers,
         )
+
+        # Errors detected!
+        content_dict = json.loads(user_page_json_content)
+        if content_dict["error"] is True:
+            error_msg = f'An error happens in \"{f"{self.station_url}ajax/user/{self.member_id}/works/latest"}\".'
+            self.crawler_settings.log.critical(error_msg)
+            raise ValueError(error_msg)
+        illust_dict = content_dict["body"]["illusts"]
+        if not isinstance(illust_dict, dict):
+            error_msg = f'Illustrations not detected in \"{f"{self.station_url}ajax/user/{self.member_id}/works/latest"}\".'
+            self.crawler_settings.log.critical(error_msg)
+            raise ValueError(error_msg)
         
         # Sort from newest to oldest
-        self.image_ids = sorted(list(json.loads(user_page_json_content)["body"]["illusts"].keys()), key=lambda x: int(x), reverse=True)
+        self.image_ids = sorted(list(illust_dict.keys()), key=lambda x: int(x), reverse=True)
         return self.image_ids
     
 
