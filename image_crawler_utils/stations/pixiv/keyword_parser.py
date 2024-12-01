@@ -189,7 +189,10 @@ class PixivKeywordParser(KeywordParser):
                         progress.update(task, advance=1, description="Requesting page again with cookies...")
 
                         await tab.get(first_page_url)
-                        image_num_element = await tab.find('span[class="sc-1pt8s3a-10 bjcknB"]', timeout=30)
+                        try:
+                            image_num_element = await tab.find('span[class="sc-1pt8s3a-10 bjcknB"]', timeout=30)  # Light mode
+                        except:
+                            image_num_element = await tab.find('span[class="sc-1pt8s3a-10 bgYnJI"]', timeout=30)  # Dark mode
                         
                         progress.update(task, advance=1, description="[green]Requesting finished!")
                         progress.finish_task(task)
