@@ -136,6 +136,8 @@ class PixivUserParser(Parser):
         )
         image_info_dict = {}
         for content in json_image_url_page_contents:
+            if content is None:  # Empty page!
+                continue
             parsed_content = json.loads(content)
             image_info_dict[parsed_content["body"]["id"]] = parsed_content["body"]
 

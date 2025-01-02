@@ -683,11 +683,13 @@ save_image_infos(
     image_info_list: Iterable[ImageInfo], 
     json_file: str,
     encoding: str='UTF-8',
+    display_progress: bool=True,
     log: Log=Log(),
 )
 image_info_list = load_image_infos(
     json_file: str,
     encoding: str='UTF-8',
+    display_progress: bool=True,
     log: Log=Log(),
 )
 
@@ -697,7 +699,16 @@ new_image_info_list = load_image_infos("image_info_list.json")
 ```
 
 + `save_image_infos()`在运行成功后将会返回元组`(保存的.json文件名, 保存的.json文件的绝对路径)`，或者运行失败后返回`None`。
+  + `image_info_list`：一个可迭代的`image_crawler_utils.ImageInfo`的列表（如`list`或`set`）。
+  + `json_file`：JSON文件的名称。
+  + `encoding`：文件编码的类型。默认为`UTF-8`。
+  + `display_progress`：显示一个`rich`进度条。默认为`True`。
+  + `log`：一个控制日志输出的`image_crawler_utils.log.Log`类。
 + `load_image_infos()`在运行成功后将会返回一个ImageInfo的列表，或者运行失败后返回`None`。
+  + `json_file`：JSON文件的名称。
+  + `encoding`：文件编码的类型。默认为`UTF-8`。
+  + `display_progress`：显示一个`rich`进度条。默认为`True`。
+  + `log`：一个控制日志输出的`image_crawler_utils.log.Log`类。
 + 参数`log`控制日志输出到控制台和记录到文件的级别。可以使用`log=crawler_settings.log`使其日志级别与你设置的CrawlerSettings相同。
 
 此处给出由DanbooruKeywordParser对Danbooru上[ID为4994142的图片](https://danbooru.donmai.us/posts/4994142)生成的ImageInfo保存为JSON的样例：

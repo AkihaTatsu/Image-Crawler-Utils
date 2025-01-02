@@ -24,9 +24,22 @@ from rich.panel import Panel
 
 
 class CountColumn(ProgressColumn):
-    """
-    Renders completed counts.
-    """
+
+    def __init__(
+        self, 
+        table_column = None,
+        has_unit: bool=False,
+    ):
+        """
+        Renders completed counts.
+
+        Parameters:
+            table_column: Table column of the ProgressColumn.
+            has_unit (bool): Has a total number in current progress.
+        """
+        super().__init__(table_column)
+        self.has_unit = has_unit
+
 
     def render(self, task: "Task") -> Text:
         """
@@ -34,12 +47,15 @@ class CountColumn(ProgressColumn):
         """
 
         complete_count = task.completed
-        unit, suffix = filesize.pick_unit_and_suffix(
-            int(complete_count),
-            ["", "×10³", "×10⁶", "×10⁹", "×10¹²"],
-            1000,
-        )
-        count_str = f"{(complete_count / unit):.1f}{suffix}" if len(suffix) > 0 else int(complete_count)
+        if self.has_unit:
+            unit, suffix = filesize.pick_unit_and_suffix(
+                int(complete_count),
+                ["", "×10³", "×10⁶", "×10⁹", "×10¹²"],
+                1000,
+            )
+            count_str = f"{(complete_count / unit):.1f}{suffix}" if len(suffix) > 0 else int(complete_count)
+        else:
+            count_str = int(complete_count)
         return Text(f"{count_str}", style="progress.filesize")
 
 

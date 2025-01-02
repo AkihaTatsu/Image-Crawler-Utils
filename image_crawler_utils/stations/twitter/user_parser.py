@@ -71,84 +71,12 @@ class TwitterUserMediaParser(Parser):
     def run(self) -> list[ImageInfo]:
         if self.cookies.is_none():
             raise ValueError('Cookies cannot be empty!')
-        self.get_media_num()
         self.generate_search_settings()
         self.get_status_from_urls()
         return self.parse_images_from_status()
 
 
     ##### Custom funcs
-    
-    
-    # Get media num
-    async def __get_media_num(self) -> int:
-        self.crawler_settings.log.info(f"Getting total num of media from user: {self.user_id} ...")
-        media_url = parse.quote(f'{self.station_url}{self.user_id}/media', safe='/:?=&')
-        
-        total_num = None
-        for i in range(self.crawler_settings.download_config.retry_times):
-            try:
-                with CustomProgress(has_spinner=True, transient=True) as progress:
-                    task = progress.add_task(total=3, description='Loading browser components...')
-                    # Connect once to get cookies
-                    try:
-                        self.crawler_settings.log.debug(f"Connecting to twitter searching result: \"{media_url}\"")
-                        browser = await set_up_nodriver_browser(
-                            proxies=self.crawler_settings.download_config.result_proxies,
-                            headless=self.headless,
-                            no_image_stylesheet=True,
-                        )
-
-                        progress.update(task, advance=1, description="Requesting user page once...")
-
-                        tab = await browser.get(media_url, new_tab=True)
-                        await tab.find('div[id="react-root"]')
-                    except Exception as e:
-                        progress.finish_task(task)
-                        browser.stop()
-                        raise ConnectionError(f"{e}")
-
-                    # Replace cookies and save these
-                    await update_nodriver_browser_cookies(browser, self.cookies)
-                    new_cookies = await browser.cookies.get_all()  # Save these new cookies for later use
-                    self.cookies = Cookies.create_by(new_cookies)
-
-                    # Connect twice to get page
-                    try:
-                        progress.update(task, advance=1, description="Requesting user page again with cookies...")
-
-                        await tab.get(media_url)  # Do not reload directly! It may be the login page.
-                        await tab.scroll_up(1000)  # Sometimes it does not load from the first tweet. Scroll to top in case of this!
-                    except Exception as e:
-                        progress.finish_task(task)
-                        browser.stop()
-                        raise ConnectionError(f"{e}")
-                    main_structure = await tab.find('div[data-testid="primaryColumn"]', timeout=30)
-                    total_num = await main_structure.query_selector('div[class="css-146c3p1 r-dnmrzs r-1udh08x r-3s2u2q r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-n6v787 r-1cwl3u0 r-16dba41"]')
-                    total_num = int(''.join(re.findall(r'\d+', total_num.text)))
-                    
-                    progress.update(task, advance=1, description="[green]Requesting successfully finished!")  # Finish
-                    progress.finish_task(task)
-                    break
-            except Exception as e:
-                self.crawler_settings.log.warning(f"Loading Twitter / X user media page failed at attempt {i + 1} because {e}")
-                error_msg = e
-
-        if total_num is None:
-            output_msg_base = f"Loading Twitter / X user media page \"{media_url}\" failed"
-            self.crawler_settings.log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {error_msg}")
-            raise ConnectionError(f"{error_msg}")
-        
-        browser.stop()
-        self.crawler_settings.log.info(f"User {self.user_id} has {total_num} media (actual number may differ).")
-        self.total_num = total_num
-        return total_num
-        
-
-    def get_media_num(self) -> int:
-        return nodriver.loop().run_until_complete(
-            self.__get_media_num()
-        )
     
 
     # Generate search settings
@@ -237,7 +165,7 @@ class TwitterUserMediaParser(Parser):
         
         exit_flag = False 
         with ProgressGroup(panel_title="Scrolling to Find [yellow]Status[reset]") as progress_group:
-            task = progress_group.main_count_bar.add_task("Searching:", total=self.total_num)
+            task = progress_group.main_no_total_count_bar.add_task("Media image number:")
 
             for j in range(len(batched_search_settings_list)):
                 # Get status using threading method
@@ -261,10 +189,10 @@ class TwitterUserMediaParser(Parser):
                                 total_status_list.append(status)
                                 total_media_num += len(status.media_list)
 
-                                progress_group.main_count_bar.update(task, advance=len(status.media_list))
+                                progress_group.main_no_total_count_bar.update(task, advance=len(status.media_list))
 
                         # Update search result
-                        progress_group.main_count_bar.update(task, description=f'Got [repr.number]{finished_num}[reset] {"pages" if finished_num > 1 else "page"} & [repr.number]{len(total_status_list)}[reset] status:')
+                        progress_group.main_no_total_count_bar.update(task, description=f'Got [repr.number]{finished_num}[reset] {"pages" if finished_num > 1 else "page"} & [repr.number]{len(total_status_list)}[reset] status with media image number:')
                         
                         # Exit when empty
                         if len(thread.result()) == 0 and self.exit_when_empty:
@@ -280,7 +208,10 @@ class TwitterUserMediaParser(Parser):
                 if exit_flag:
                     self.crawler_settings.log.info(f"As empty pages are detected, no new pages will be loaded to detect status.")
                     break
+            
         
+            progress_group.main_no_total_count_bar.update(task, description=f'[green]Finished finding status![reset] Got [repr.number]{finished_num}[reset] {"pages" if finished_num > 1 else "page"} & [repr.number]{len(total_status_list)}[reset] status with media image number:')
+
         self.crawler_settings.log.info(f"Finished getting status. {len(total_status_list)} status {'are' if len(total_status_list) > 1 else 'is'} fetched.")
 
         total_status_list.sort(reverse=True)  # Sort by status_id from large to small

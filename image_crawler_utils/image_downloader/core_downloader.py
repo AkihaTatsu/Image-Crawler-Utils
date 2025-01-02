@@ -57,7 +57,8 @@ def download_image(
 
     # Try several times
     for i in range(download_config.retry_times):
-
+        
+        # Get basic response
         try:                    
             # Set configs
             download_time = download_config.max_download_time
@@ -78,7 +79,16 @@ def download_image(
                 timeout=(download_config.timeout, download_time),
                 stream=True,
             )
+        except Exception as e:
+            log.warning(f'Downloading "{image_name}" at attempt {i + 1} FAILED because {e} Retry downloading.\n{traceback.format_exc()}',
+                        output_msg=f'Downloading "{image_name}" at attempt {i + 1} FAILED. Retry downloading.')
+            if os.path.exists(image_path):  # Remove tmp file
+                os.remove(image_path)
+            time.sleep(download_config.result_fail_delay)
+            return False, 0
 
+        # Get content (with progress bar)
+        try:
             # Check result
             if response.status_code == requests.status_codes.codes.ok:  # Success
                 if "content-length" in response.headers.keys() and response.headers["content-length"].isdigit():  # Has content-length
@@ -160,8 +170,9 @@ def download_image(
         except Exception as e:
             log.warning(f'Downloading "{image_name}" at attempt {i + 1} FAILED because {e} Retry downloading.\n{traceback.format_exc()}',
                         output_msg=f'Downloading "{image_name}" at attempt {i + 1} FAILED. Retry downloading.')
+            progress.finish_task(task)  # Hide progress bar
             if os.path.exists(image_path):  # Remove tmp file
                 os.remove(image_path)
             time.sleep(download_config.result_fail_delay)
-        
-    return False, 0
+
+    return False, 0        

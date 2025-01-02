@@ -70,7 +70,11 @@ async def __get_image_from_status(
     try:
         await tab.find('article[data-testid="tweet"]', timeout=30)  # Try to get a tweet first
     except:
-        main_structure = await tab.find('div[data-testid="primaryColumn"]')
+        try:
+            main_structure = await tab.find('div[data-testid="primaryColumn"]')
+        except Exception as e:
+            progress.finish_task(task)
+            raise ConnectionError(f"{e}")
         empty_element = None  # Twitter / X page not exist
         try:
             empty_element = await main_structure.query_selector('div[data-testid="error-detail"]')

@@ -445,7 +445,12 @@ print_logging_msg(
 
 ### CountColumn
 
-A `rich.progress.ProgressColumn` class, which displays current progress number. For example, `10` will be displayed as `10` will `1120` be displayed as `1.1×10³`.
+A `rich.progress.ProgressColumn` class, which displays current progress number in integer.
+
+Besides the parameters of `rich.progress.ProgressColumn`, its parameters also include:
+
++ `has_unit`: Set to `True` will shorten the number with a unit. Default is `False`, meaning the number will be displayed directly.
+  + For example, `10` will be displayed as `10` will `12120` be displayed as `12.1×10³`.
 
 ### TimeColumnLeft
 

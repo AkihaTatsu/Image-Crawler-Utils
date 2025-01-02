@@ -1,4 +1,4 @@
-# Anything in .classes be directly import from image_crawler_utils
+##### Anything in .classes be directly import from image_crawler_utils
 
 from .classes.cookies import (
     Cookies,
@@ -66,7 +66,7 @@ def silent_deconstruct_browser(log: Log=Log()):
                 break
             except (PermissionError, OSError) as e:
                 if attempt == 4:
-                    log.error(f'Has problem removing temp data dir "{_.config.user_data_dir}"; consider checking whether it\'s there and remove it manually. Error: {e}')
+                    log.error(f'Has problem when removing temp data directory "{_.config.user_data_dir}"; consider checking whether it\'s there and removing it manually. Error: {e}')
                     break
                 time.sleep(0.15)
                 continue
