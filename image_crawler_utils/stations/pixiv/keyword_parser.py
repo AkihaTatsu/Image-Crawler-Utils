@@ -1,22 +1,18 @@
 from typing import Optional, Union
 
-import math
+import time, random
 import json
 from collections import ChainMap
 from collections.abc import Callable
 import requests
-import traceback
 
 from urllib import parse
-import nodriver
 
-from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
+from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
 from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
 from image_crawler_utils.user_agent import UserAgent
 from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
-from image_crawler_utils.utils import set_up_nodriver_browser
 
-from .constants import PIXIV_IMAGE_NUM_PER_JSON, PIXIV_MAX_JSON_PAGE_NUM
 from .search_settings import PixivSearchSettings
 
 
@@ -84,7 +80,7 @@ class PixivKeywordParser(KeywordParser):
                 session.cookies.update(self.cookies.cookies_dict)
             else:
                 raise ValueError('Cookies cannot be empty!')
-            self.get_image_num()
+            self.get_json_page_num()
             self.get_json_page_urls()
             self.get_image_basic_info(session=session)
             if self.quick_mode:
@@ -141,7 +137,7 @@ class PixivKeywordParser(KeywordParser):
             for string in keyword_strings:
                 self.crawler_settings.log.debug(f'Testing the image num of keyword string: {string}')
                 self.keyword_string = string
-                image_num = self.get_image_num()
+                image_num = self.get_json_page_num()
                 self.crawler_settings.log.debug(f'The image num of {string} is {image_num}.')
                 if min_image_num is None or image_num < min_image_num:
                     min_image_num = image_num
@@ -155,88 +151,50 @@ class PixivKeywordParser(KeywordParser):
         return self.keyword_string
 
 
-    # Get total image num
-    async def __get_image_num(self) -> int:
-        # Connect to the first gallery page
-        for i in range(self.crawler_settings.download_config.retry_times):
-            try:
-                self.crawler_settings.log.info(f'Connecting to the first gallery page using keyword string "{self.keyword_string}" ...')
-                first_page_url = parse.quote(f"{self.station_url}{self.pixiv_search_settings.build_search_appending_str_website(self.keyword_string)}", safe='/:?=&')
+    def get_json_page_num(self, session: requests.Session=None) -> int:
+        if session is None:
+            session = requests.Session()
+            session.cookies.update(self.cookies.cookies_dict)
 
-                with CustomProgress(has_spinner=True, transient=True) as progress:
-                    task = progress.add_task(total=3, description='Loading browser components...')
-                    
-                    # Connect once to get cookies
-                    try:
-                        self.crawler_settings.log.debug(f"Parsing Pixiv page: \"{first_page_url}\"")
-                        browser = await set_up_nodriver_browser(
-                            proxies=self.crawler_settings.download_config.result_proxies,
-                            headless=self.headless,
-                        )
+        if self.crawler_settings.download_config.result_headers is None:  # Pixiv must have user-agents!
+            json_search_page_headers = dict(ChainMap(UserAgent.random_agent_with_name("Chrome"), {"Referer": "www.pixiv.net"}))
+        else:
+            json_search_page_headers = dict(ChainMap(self.crawler_settings.download_config.result_headers, {"Referer": "www.pixiv.net"}))
 
-                        progress.update(task, advance=1, description="Requesting page once...")
+        first_page_url = parse.quote(f"{self.station_url}{self.pixiv_search_settings.build_search_appending_str_json(self.keyword_string)}", safe='/:?=&')
 
-                        tab = await browser.get(first_page_url, new_tab=True)
-                        await tab.find('img[alt="pixiv"]', timeout=30)
-                    except Exception as e:
-                        raise ConnectionError(f"{e}")
+        self.crawler_settings.log.info(f'Connecting to the first gallery page using URL "{first_page_url}" ...')
+            
+        content = self.request_page_content(first_page_url, session=session, headers=json_search_page_headers)
 
-                    # Replace cookies
-                    await update_nodriver_browser_cookies(browser, self.cookies)
-                    
-                    # Connect twice to get images
-                    try:
-                        progress.update(task, advance=1, description="Requesting page again with cookies...")
+        if content is None:
+            self.crawler_settings.log.critical(f"CANNOT connect to the first JSON page, URL: \"{first_page_url}\"")
+            raise ConnectionError(f"CANNOT connect to the first JSON page, URL: \"{first_page_url}\"")
+        else:
+            self.crawler_settings.log.info(f'Successfully connected to the first JSON page.')
 
-                        await tab.get(first_page_url)
-                        try:
-                            image_num_element = await tab.find('span[class="sc-1pt8s3a-10 bjcknB"]', timeout=30)  # Light mode
-                        except:
-                            image_num_element = await tab.find('span[class="sc-1pt8s3a-10 bgYnJI"]', timeout=30)  # Dark mode
-                        
-                        progress.update(task, advance=1, description="[green]Requesting finished!")
-                        progress.finish_task(task)
-                        browser.stop()
-                    except Exception as e:
-                        progress.finish_task(task)
-                        browser.stop()
-                        raise ConnectionError(f"{e}")
-                
-                image_num_str = image_num_element.text.replace(',', '').strip()
-                if len(image_num_str) == 0:
-                    raise ValueError('Total image number is empty. Probably because the webpage element is not correctly loaded.')
-                image_num = int(image_num_str)
-                self.crawler_settings.log.info(f"{image_num} {'images' if image_num > 1 else 'image'} in total detected. Pay attention that not all images may be recorded and downloaded.")
-                self.total_image_num = image_num
-                return self.total_image_num
-            except Exception as e:
-                self.crawler_settings.log.warning(f"Parsing Pixiv first gallery page failed at attempt {i + 1} because {e}")
-                error_msg = e
-        output_msg_base = f"Parsing Pixiv first gallery page \"{first_page_url}\" failed"
-        self.crawler_settings.log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {error_msg}")
+        parsed_content = json.loads(content)
+        for image_list_type in ["illust", "illustManga", "manga"]:
+            if image_list_type in parsed_content["body"].keys():
+                self.artworks_num = int(parsed_content["body"][image_list_type]["total"])
+                self.json_page_num = int(parsed_content["body"][image_list_type]["lastPage"])
+
+        if self.json_page_num == 1000:
+            self.crawler_settings.log.warning("Number of result pages has reached 1000. Due to Pixiv restrictions, result in pages exceeding 1000 cannot be fetched through JSON API directly.")
         
-        return 0
-        
-
-    def get_image_num(self) -> int:
-        # Actually use this!
-        return nodriver.loop().run_until_complete(
-            self.__get_image_num()
-        )
+        self.crawler_settings.log.info(f"Number of artworks: {self.artworks_num}")
+        return self.json_page_num
         
 
     # Get Pixiv ajax API json page URLs
     def get_json_page_urls(self) -> list[str]:
-        self.last_page_num = math.ceil(self.total_image_num / PIXIV_IMAGE_NUM_PER_JSON)
-        if self.last_page_num > PIXIV_MAX_JSON_PAGE_NUM:
-            self.last_page_num = PIXIV_MAX_JSON_PAGE_NUM
         self.json_page_urls = [parse.quote(f"{self.station_url}{self.pixiv_search_settings.build_search_appending_str_json(self.keyword_string)}&p={page_num}", safe='/:?=&')
-                               for page_num in range(1, self.last_page_num + 1)]
+                               for page_num in range(1, self.json_page_num + 1)]
         return self.json_page_urls
     
 
     # Get image ID and basic info
-    def get_image_basic_info(self, session: requests.Session=None) -> dict:            
+    def get_image_basic_info(self, session: requests.Session=None) -> dict:
         if session is None:
             session = requests.Session()
             session.cookies.update(self.cookies.cookies_dict)
@@ -248,23 +206,40 @@ class PixivKeywordParser(KeywordParser):
         else:
             json_search_page_headers = dict(ChainMap(self.crawler_settings.download_config.result_headers, {"Referer": "www.pixiv.net"}))
 
-        # Get and parse json page info
-        json_page_contents = self.threading_request_page_content(
-            self.json_page_urls, 
-            restriction_num=self.crawler_settings.capacity_count_config.page_num, 
-            session=session,
-            headers=json_search_page_headers,
-            # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
-        )
-
-        # Get dict
+        # Get pages until all pages are fetched
+        empty_urls = self.json_page_urls.copy()
         json_basic_info = {}
-        for content in json_page_contents:
-            parsed_content = json.loads(content)
-            for image_list_type in ["illust", "illustManga", "manga"]:
-                if image_list_type in parsed_content["body"].keys():
-                    for image_data in parsed_content["body"][image_list_type]["data"]:
-                        json_basic_info[image_data["id"]] = image_data
+
+        while len(empty_urls) > 0:
+            download_urls = empty_urls.copy()
+            empty_urls = []
+
+            # Get and parse json page info
+            json_page_contents = self.threading_request_page_content(
+                download_urls, 
+                restriction_num=self.crawler_settings.capacity_count_config.page_num, 
+                session=session,
+                headers=json_search_page_headers,
+                # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
+            )
+
+            # Get dict
+            for i in range(len(download_urls)):
+                parsed_content = json.loads(json_page_contents[i])
+                for image_list_type in ["illust", "illustManga", "manga"]:
+                    if image_list_type in parsed_content["body"].keys():
+                        if len(parsed_content["body"][image_list_type]["data"]) > 0:
+                            for image_data in parsed_content["body"][image_list_type]["data"]:
+                                json_basic_info[image_data["id"]] = image_data
+                        else:
+                            empty_urls.append(download_urls[i])
+
+            if len(empty_urls) > 0:
+                self.crawler_settings.log.warning(f'{len(empty_urls)} {"pages are" if len(empty_urls) > 1 else "page is"} empty, possibly because requests were too frequent. Retrying to request pages in 1 to 2 minutes.')
+                time.sleep(60 + random.random() * 60)
+
+        # Sort with ID from large to small
+        json_basic_info = {elem[0]: elem[1] for elem in sorted(json_basic_info.items(), key=lambda item: int(item[0]), reverse=True)}
 
         self.json_basic_info = json_basic_info
         return self.json_basic_info

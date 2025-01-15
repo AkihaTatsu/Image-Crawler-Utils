@@ -6,7 +6,7 @@ import dill
 import traceback
 from concurrent import futures
 import requests
-
+from rich import print
 from rich.progress import SpinnerColumn
 
 from image_crawler_utils import Cookies, CrawlerSettings
@@ -338,7 +338,6 @@ class Downloader:
         try:
             download_num, filtered_ordinals_list, skipped_ordinals_list = self.filter_ordinals_list()
             print(f"  - Number of images to be downloaded: {len(filtered_ordinals_list)}")
-            print(f"  - Number of images to be skipped: {len(skipped_ordinals_list)}")
         except Exception as e:
             print(f"Image downloading info has an error because {e}!\n{traceback.format_exc()}", "error")
 

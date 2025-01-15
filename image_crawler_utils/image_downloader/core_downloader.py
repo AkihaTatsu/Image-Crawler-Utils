@@ -85,7 +85,7 @@ def download_image(
             if os.path.exists(image_path):  # Remove tmp file
                 os.remove(image_path)
             time.sleep(download_config.result_fail_delay)
-            return False, 0
+            continue
 
         # Get content (with progress bar)
         try:

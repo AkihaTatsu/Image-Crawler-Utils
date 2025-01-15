@@ -129,6 +129,8 @@ class DownloadConfig:
         if isinstance(self.proxies, dict):
             if "https" in self.proxies.keys() and "http" not in self.proxies.keys():
                 self.proxies["http"] = self.proxies["https"]
+        elif not (isinstance(self.proxies, dict) or callable(self.proxies) or (self.proxies is None)):
+            raise TypeError("Proxies should be a dict, a callable function or None.")
         
     
     @property
