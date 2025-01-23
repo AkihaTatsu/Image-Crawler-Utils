@@ -163,7 +163,7 @@ class PixivKeywordParser(KeywordParser):
 
         first_page_url = parse.quote(f"{self.station_url}{self.pixiv_search_settings.build_search_appending_str_json(self.keyword_string)}", safe='/:?=&')
 
-        self.crawler_settings.log.info(f'Connecting to the first gallery page using URL "{first_page_url}" ...')
+        self.crawler_settings.log.info(f'Connecting to the first gallery page using keyword "{self.keyword_string}" and URL "{first_page_url}" ...')
             
         content = self.request_page_content(first_page_url, session=session, headers=json_search_page_headers)
 
@@ -183,6 +183,8 @@ class PixivKeywordParser(KeywordParser):
             self.crawler_settings.log.warning("Number of result pages has reached 1000. Due to Pixiv restrictions, result in pages exceeding 1000 cannot be fetched through JSON API directly.")
         
         self.crawler_settings.log.info(f"Number of artworks: {self.artworks_num}")
+        if self.artworks_num == 0:  # No result, no pages!
+            self.json_page_num = 0
         return self.json_page_num
         
 

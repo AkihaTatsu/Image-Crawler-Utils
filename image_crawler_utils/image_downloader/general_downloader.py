@@ -81,7 +81,9 @@ def download_image_from_url(
         edited_image_name = image_name
 
     time.sleep(download_config.result_thread_delay)
+
     # Start downloading
+    
     is_success, image_size = download_image(
         url=url,
         image_name=edited_image_name,

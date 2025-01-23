@@ -350,7 +350,7 @@ class Parser(ABC):
                 # Finished normally, set progress bar to finished state
                 progress_group.main_count_bar.update(task, description=f"[green]Downloading webpages finished!")
         else:
-            self.crawler_settings.log.warning(f"No new webpages are to be downloaded.")
+            self.crawler_settings.log.warning(f"No webpages are to be downloaded.")
 
         # Return corresponding page result according to their order in URLs
         page_content_list = [page_content_dict_with_thread_id[i]

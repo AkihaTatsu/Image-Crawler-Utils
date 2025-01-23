@@ -105,7 +105,7 @@ class TwitterKeywordMediaParser(KeywordParser):
         query_string = self.twitter_search_settings.build_search_appending_str(self.keyword_string)
         search_status_url = parse.quote(f'{self.station_url}search?q={query_string}&src=typed_query&f=live', safe='/:?=&')
 
-        self.crawler_settings.log.info(f'Loading searching page using query string "{query_string}" ...')
+        self.crawler_settings.log.info(f'Loading searching page using query string "{query_string}" and URL "{search_status_url}" ...')
         
         flag_success = False
         for i in range(self.crawler_settings.download_config.retry_times):

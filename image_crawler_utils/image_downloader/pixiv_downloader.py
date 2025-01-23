@@ -80,7 +80,7 @@ def pixiv_download_image_from_url(
                     
                 except Exception as e:
                     log.warning(f"Connecting to \"{url}\" at attempt {i + 1} FAILED because {e} Retry connecting.\n{traceback.format_exc()}",
-                                    output_msg=f"Downloading \"{url}\" at attempt {i + 1} FAILED.")
+                                output_msg=f"Downloading \"{url}\" at attempt {i + 1} FAILED.")
                     time.sleep(download_config.result_fail_delay)
 
             # Parsing download page text
