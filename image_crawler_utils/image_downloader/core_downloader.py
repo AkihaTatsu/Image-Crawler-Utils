@@ -3,6 +3,7 @@ import time
 import random
 
 import requests
+from rich import markup
 
 from typing import Optional, Union
 from collections.abc import Callable
@@ -47,7 +48,7 @@ def download_image(
     """
 
     # Start downloading
-    log.debug(f"Start downloading {image_name} from \"{url}\"")
+    log.debug(f"Start downloading [repr.filename]{markup.escape(image_name)}[reset] from [repr.url]{markup.escape(url)}[reset]", extra={"markup": True})
     
     # Set image path
     check_dir(store_path, log)
@@ -80,8 +81,8 @@ def download_image(
                 stream=True,
             )
         except Exception as e:
-            log.warning(f'Downloading "{image_name}" at attempt {i + 1} FAILED because {e}{" Retry downloading." if i < download_config.retry_times - 1 else " "}\n{traceback.format_exc()}',
-                        output_msg=f'Downloading "{image_name}" at attempt {i + 1} FAILED.{" Retry downloading." if i < download_config.retry_times - 1 else " "}')
+            log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED because {e}{" Retry downloading." if i < download_config.retry_times - 1 else " "}\n{traceback.format_exc()}',
+                        output_msg=f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED.{" Retry downloading." if i < download_config.retry_times - 1 else " "}', extra={"markup": True})
             if os.path.exists(image_path):  # Remove tmp file
                 os.remove(image_path)
             time.sleep(download_config.result_fail_delay)
@@ -105,7 +106,7 @@ def download_image(
                     display_image_name = shorten_file_name(image_name)
 
                     # Loading progress bar
-                    task = progress.add_task(f'- Thread [repr.number]{thread_id}[reset], [white bold]{display_image_name}[reset]:', total=image_size)
+                    task = progress.add_task(f'- Thread [repr.number]{thread_id}[reset], [white bold]{markup.escape(display_image_name)}[reset]:', total=image_size)
                     with open(image_path, "wb") as f:
                         for data in response.iter_content(chunk_size=32768):
                             size = f.write(data)
@@ -115,13 +116,13 @@ def download_image(
                         # Detect incomplete image
                         if downloaded_size != image_size:
                             time.sleep(download_config.result_fail_delay)
-                            log.warning(f'"{image_name}" downloaded at attempt {i + 1} is incomplete.{" Retry downloading." if i < download_config.retry_times - 1 else " "}')
+                            log.warning(f'[repr.filename]{markup.escape(image_name)}[reset] downloaded at attempt {i + 1} is incomplete.{" Retry downloading." if i < download_config.retry_times - 1 else " "}', extra={"markup": True})
                             continue
 
                     progress.finish_task(task)  # Hide progress bar
 
                 else:  # Failed to get content-length
-                    log.debug(f'"content-length" not found in response.headers.keys() for {image_name} from \"{url}\"')
+                    log.debug(f'"content-length" not found in response.headers.keys() for [repr.filename]{markup.escape(image_name)}[reset] from [repr.url]{markup.escape(url)}[reset]', extra={"markup": True})
                     downloaded_size = 0
 
                     # Set up progress bar
@@ -134,7 +135,7 @@ def download_image(
                     display_image_name = shorten_file_name(image_name)
 
                     # Loading progress bar
-                    task = progress.add_task(f'- Thread [repr.number]{thread_id}[reset], [white bold]{display_image_name}[reset]:')
+                    task = progress.add_task(f'- Thread [repr.number]{thread_id}[reset], [white bold]{markup.escape(display_image_name)}[reset]:')
                     with open(image_path, "wb") as f:       
                         for data in response.iter_content(chunk_size=1024):
                             size = f.write(data)
@@ -146,30 +147,30 @@ def download_image(
 
                 # Overwrite images
                 if os.path.exists(original_image_path):
-                    log.debug(f"{os.path.abspath(original_image_path)} will be overwritten.")
+                    log.debug(f"[repr.filename]{markup.escape(os.path.abspath(original_image_path))}[reset] will be overwritten.", extra={"markup": True})
                     os.remove(original_image_path)
                 
                 # Rename images and finish
                 os.rename(image_path, original_image_path)
-                log.debug(f"Finished downloading {image_name} from \"{url}\"")
+                log.debug(f"Finished downloading [repr.filename]{markup.escape(image_name)}[resets] from [repr.url]{markup.escape(url)}[reset]", extra={"markup": True})
                 return True, image_size
 
             else:
                 if response.status_code == 429:
-                    log.warning(f'Connecting to \"{url}\" FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads or increase the delay time and try again.')
+                    log.warning(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads or increase the delay time and try again.', extra={"markup": True})
                     time.sleep(60 + random.random() * 60)
                     continue
                 elif 400 <= response.status_code < 500:
-                    log.error(f'Downloading "{image_name}" FAILED because response status code is {response.status_code} from \"{url}\"')
+                    log.error(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] FAILED because response status code is {response.status_code} from [repr.url]{markup.escape(url)}[reset]', extra={"markup": True})
                     break
                 else:
-                    log.warning(f'Downloading "{image_name}" at attempt {i + 1} from \"{url}\" FAILED because response code is {response.status_code}.{" Retry downloading." if i < download_config.retry_times - 1 else " "}')
+                    log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} from [repr.url]{markup.escape(url)}[reset] FAILED because response code is {response.status_code}.{" Retry downloading." if i < download_config.retry_times - 1 else " "}', extra={"markup": True})
                     time.sleep(download_config.result_fail_delay)
                     continue
             
         except Exception as e:
-            log.warning(f'Downloading "{image_name}" at attempt {i + 1} FAILED because {e}{" Retry downloading." if i < download_config.retry_times - 1 else " "}\n{traceback.format_exc()}',
-                        output_msg=f'Downloading "{image_name}" at attempt {i + 1} FAILED.{" Retry downloading." if i < download_config.retry_times - 1 else " "}')
+            log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED because {e}{" Retry downloading." if i < download_config.retry_times - 1 else " "}\n{traceback.format_exc()}',
+                        output_msg=f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED.{" Retry downloading." if i < download_config.retry_times - 1 else " "}', extra={"markup": True})
             progress.finish_task(task)  # Hide progress bar
             if os.path.exists(image_path):  # Remove tmp file
                 os.remove(image_path)

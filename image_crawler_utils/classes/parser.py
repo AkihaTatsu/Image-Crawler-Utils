@@ -7,7 +7,7 @@ import time, datetime
 from typing import Optional, Union
 from collections.abc import Iterable, Callable
 import os, dill
-from rich import print
+from rich import print, markup
 
 from urllib import parse
 from concurrent import futures
@@ -83,7 +83,7 @@ class Parser(ABC):
         # Basic info
         try:
             print('\nBasic Info:')
-            print(f"  - Station URL: {self.station_url}")
+            print(f"  - Station URL: [repr.url]{markup.escape(self.station_url)}[reset]")
             if self.cookies.is_none():                
                 print(f"  - Cookies: None")
             else:
@@ -131,10 +131,10 @@ class Parser(ABC):
         try:
             with open(f_name, "wb") as f:
                 dill.dump(self, f)
-                self.crawler_settings.log.info(f'{type(self).__name__} has been dumped into "{os.path.abspath(f_name)}"')
+                self.crawler_settings.log.info(f'{type(self).__name__} has been dumped into [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
                 return f_name, os.path.abspath(f_name)
         except Exception as e:
-            self.crawler_settings.log.error(f'Failed to dump {type(self).__name__} into "{os.path.abspath(f_name)}" because {e}\n{traceback.format_exc()}')
+            self.crawler_settings.log.error(f'Failed to dump {type(self).__name__} into [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
             return None
         
     
@@ -158,10 +158,10 @@ class Parser(ABC):
         try:
             with open(pkl_file, "rb") as f:
                 cls = dill.load(f)
-                log.info(f'{type(cls).__name__} has been successfully loaded from "{os.path.abspath(pkl_file)}"')
+                log.info(f'{type(cls).__name__} has been successfully loaded from [repr.filename]{markup.escape(os.path.abspath(pkl_file))}[reset]', extra={"markup": True})
             return cls
         except Exception as e:
-            log.error(f'Failed to load {type(cls).__name__} from "{os.path.abspath(pkl_file)}" because {e}\n{traceback.format_exc()}')
+            log.error(f'Failed to load {type(cls).__name__} from [repr.filename]{markup.escape(os.path.abspath(pkl_file))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
             return None
 
 
@@ -186,7 +186,7 @@ class Parser(ABC):
             The HTML content of the webpage.
         """
 
-        self.crawler_settings.log.debug(f'Try connecting to \"{url}\"')
+        self.crawler_settings.log.debug(f'Try connecting to [repr.url]{markup.escape(url)}[reset]', extra={"markup": True})
         if thread_delay is None:
             real_thread_delay = self.crawler_settings.download_config.result_thread_delay
         else:
@@ -210,23 +210,23 @@ class Parser(ABC):
                 )
 
                 if response.status_code == requests.status_codes.codes.ok:
-                    self.crawler_settings.log.debug(f'Successfully connected to \"{url}\" at attempt {i + 1}.')
+                    self.crawler_settings.log.debug(f'Successfully connected to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1}.', extra={"markup": True})
                     return response.text
                 elif response.status_code == 429:
-                    self.crawler_settings.log.warning(f'Connecting to \"{url}\" FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads and try again.')
+                    self.crawler_settings.log.warning(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads and try again.', extra={"markup": True})
                     time.sleep(60 + random.random() * 60)
                 elif 400 <= response.status_code < 500:
-                    self.crawler_settings.log.error(f'Connecting to \"{url}\" FAILED because response status code is {response.status_code}.')
+                    self.crawler_settings.log.error(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED because response status code is {response.status_code}.', extra={"markup": True})
                     return None
                 else:
-                    self.crawler_settings.log.warning(f'Failed to connect to \"{url}\" at attempt {i + 1}. Response status code is {response.status_code}.')
+                    self.crawler_settings.log.warning(f'Failed to connect to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1}. Response status code is {response.status_code}.', extra={"markup": True})
                 
             except Exception as e:
-                self.crawler_settings.log.warning(f"Connecting to \"{url}\" at attempt {i + 1} FAILED because {e} Retry connecting.\n{traceback.format_exc()}",
-                                 output_msg=f"Connecting to \"{url}\" at attempt {i + 1} FAILED.")
+                self.crawler_settings.log.warning(f"Connecting to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1} FAILED because {e} Retry connecting.\n{traceback.format_exc()}",
+                                                  output_msg=f"Connecting to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1} FAILED.", extra={"markup": True})
                 time.sleep(self.crawler_settings.download_config.result_fail_delay)
 
-        self.crawler_settings.log.error(f'FAILED to connect to \"{url}\"')
+        self.crawler_settings.log.error(f'FAILED to connect to [repr.url]{markup.escape(url)}[reset]', extra={"markup": True})
         return None
     
 
@@ -367,7 +367,7 @@ class Parser(ABC):
         save_cookies_file: Optional[str]=None,
     ):        
         test_url = url if url is not None else self.station_url
-        self.crawler_settings.log.info(f"Loading browser to get Cloudflare cookies from {test_url}.")
+        self.crawler_settings.log.info(f"Loading browser to get Cloudflare cookies from [repr.url]{markup.escape(test_url)}[reset].", extra={"markup": True})
         
         # Pass Cloudflare verification
         with CustomProgress(has_spinner=True, transient=True) as progress:
@@ -530,7 +530,7 @@ class KeywordParser(Parser):
         # Basic info
         print('\nBasic Info:')
         try:
-            print(f"  - Station URL: {self.station_url}")
+            print(f"  - Station URL: [repr.url]{markup.escape(self.station_url)}[reset]")
             print(f"  - Standard keyword string: {self.standard_keyword_string}")
             print(f"  - Keyword tree: {self.keyword_tree.list_struct()}")
             print(f"  - Keyword string: {self.keyword_string}")

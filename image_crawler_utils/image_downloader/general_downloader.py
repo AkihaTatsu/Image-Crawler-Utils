@@ -3,6 +3,7 @@ import time
 
 import requests
 from typing import Optional, Union
+from rich import markup
 
 from image_crawler_utils import Cookies
 from image_crawler_utils.configs import DownloadConfig
@@ -97,5 +98,5 @@ def download_image_from_url(
     if is_success:
         return image_size, thread_id
     else:
-        log.error(f'FAILED to download "{image_name}" from \"{url}\"')
+        log.error(f'FAILED to download [repr.filename]{markup.escape(image_name)}[reset] from [repr.url]{markup.escape(url)}[reset]', extra={"markup": True})
         return 0, thread_id

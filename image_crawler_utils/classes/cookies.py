@@ -6,6 +6,7 @@ from typing import Optional, Union
 import copy
 import json
 import os, traceback
+from rich import markup
 
 import nodriver
 
@@ -101,11 +102,11 @@ class Cookies:
             with open(json_file, "r", encoding=encoding) as f:
                 new_cls = cls.create_by(json.load(f))            
 
-            log.info(f'Cookies has been loaded from "{os.path.abspath(json_file)}"')
+            log.info(f'Cookies has been loaded from [repr.filename]{markup.escape(os.path.abspath(json_file))}[reset]', extra={"markup": True})
             return new_cls
             
         except Exception as e:
-            log.error(f'Failed to load Cookies from "{os.path.abspath(json_file)}" because {e}\n{traceback.format_exc()}')
+            log.error(f'Failed to load Cookies from [repr.filename]{markup.escape(os.path.abspath(json_file))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
             return None
         
 
@@ -129,10 +130,10 @@ class Cookies:
         try:
             with open(f_name, "w", encoding=encoding) as f:
                 json.dump(self.cookies_selenium, f, indent=4, ensure_ascii=False)
-                log.info(f'Cookies has been saved at "{os.path.abspath(f_name)}"')
+                log.info(f'Cookies has been saved at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
                 return f_name, os.path.abspath(f_name)
         except Exception as e:
-            log.error(f'Failed to save Cookies at "{os.path.abspath(f_name)}" because {e}\n{traceback.format_exc()}')
+            log.error(f'Failed to save Cookies at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
             return None
         
 

@@ -50,13 +50,13 @@ def parse_twitter_status_element(
     try:
         result.user_name = soup.find('span', class_='css-1jxf684 r-bcqeeo r-1ttztb7 r-qvutc0 r-poiln3').text
     except Exception as e:
-        log.warning(f"Cannot get user name from \"{result.status_url}\" because {e}")
+        log.warning(f"Cannot get user name from [repr.url]{result.status_url}[reset] because {e}", extra={"markup": True})
 
     # Posting time
     try:
         result.time = soup.find('time').get("datetime")
     except Exception as e:
-        log.warning(f"Cannot get time from \"{result.status_url}\" because {e}")
+        log.warning(f"Cannot get time from [repr.url]{result.status_url}[reset] because {e}", extra={"markup": True})
 
     # Replies, retweets, and likes; string found is like '123 replies'
     try:
@@ -66,19 +66,19 @@ def parse_twitter_status_element(
             reply_num_str = buttons[0].get('aria-label')
             result.reply_num = int(reply_num_str.split(' ')[0])
         except Exception as e:
-            log.warning(f"Cannot get reply num from \"{result.status_url}\" because {e}")
+            log.warning(f"Cannot get reply num from [repr.url]{result.status_url}[reset] because {e}", extra={"markup": True})
         try:
             retweet_num_str = buttons[1].get('aria-label')
             result.retweet_num = int(retweet_num_str.split(' ')[0])
         except Exception as e:
-            log.warning(f"Cannot get retweet num from \"{result.status_url}\" because {e}")
+            log.warning(f"Cannot get retweet num from [repr.url]{result.status_url}[reset] because {e}", extra={"markup": True})
         try:
             like_num_str = buttons[2].get('aria-label')
             result.like_num = int(like_num_str.split(' ')[0])
         except Exception as e:
-            log.warning(f"Cannot get like num from \"{result.status_url}\" because {e}")
+            log.warning(f"Cannot get like num from [repr.url]{result.status_url}[reset] because {e}", extra={"markup": True})
     except Exception as e:
-        log.warning(f"Cannot get replies / retweets / likes information from \"{result.status_url}\" because {e}")
+        log.warning(f"Cannot get replies / retweets / likes information from [repr.url]{result.status_url}[reset] because {e}", extra={"markup": True})
 
     # Optional elements: view num (Some old tweets do not have this)
     try:
@@ -124,7 +124,7 @@ def parse_twitter_status_element(
                     name, ext = os.path.splitext(result.media_list[i].image_name)
                     result.media_list[i].image_name = name + f'_{i + 1}' + ext
         except Exception as e:
-            output_msg_base = f"There should be at least 1 media in \"{result.status_url}\", but none is detected"
+            output_msg_base = f"There should be at least 1 media in [repr.url]{result.status_url}[reset], but none is detected"
             log.warning(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}")
 
     return result
@@ -221,7 +221,7 @@ async def scrolling_to_find_status(
                 # Check if it is empty
                 check = await twitter_empty_check(tab)
                 if check:
-                    crawler_settings.log.warning(f'Page \"{tab_url}\" contains no result.')
+                    crawler_settings.log.warning(f'Page [repr.url]{tab_url}[reset] contains no result.', extra={"markup": True})
                     return [], 0  # Exit directly
                 
                 # Check if there is an error
@@ -237,7 +237,7 @@ async def scrolling_to_find_status(
                         # Scroll down LOAD_SCROLL_LENGTH
                         progress.update(task, advance=1)
                         await tab.scroll_down(LOAD_SCROLL_LENGTH)
-                        crawler_settings.log.debug(f'Scrolled down {LOAD_SCROLL_LENGTH} at \"{tab_url}\"')
+                        crawler_settings.log.debug(f'Scrolled down {LOAD_SCROLL_LENGTH} at [repr.url]{tab_url}[reset]', extra={"markup": True})
 
                     # Loading until progress bar (rotating circle) disappears
                     await twitter_progress_bar_loading(tab)
@@ -250,14 +250,14 @@ async def scrolling_to_find_status(
                     # Scroll up LOAD_SCROLL_LENGTH
                     progress.update(task, advance=1)
                     await tab.scroll_up(LOAD_SCROLL_LENGTH)
-                    crawler_settings.log.debug(f'Scrolled up {LOAD_SCROLL_LENGTH} at \"{tab_url}\"')
+                    crawler_settings.log.debug(f'Scrolled up {LOAD_SCROLL_LENGTH} at [repr.url]{tab_url}[reset]', extra={"markup": True})
 
                     # Only compare the results after SCROLL_NUM scrollings
                     for i in range(SCROLL_NUM):
                         await asyncio.sleep(SCROLL_DELAY)
                         progress.update(task, advance=1)
                         await tab.scroll_down(DOWN_SCROLL_LENGTH)
-                        crawler_settings.log.debug(f'Scrolled down {DOWN_SCROLL_LENGTH} at \"{tab_url}\"')
+                        crawler_settings.log.debug(f'Scrolled down {DOWN_SCROLL_LENGTH} at [repr.url]{tab_url}[reset]', extra={"markup": True})
                         scroll_count += 1
                         
                         # Twitter has f**king StaleElementReferenceException, which means you may retry several times to retrieve the element
@@ -297,7 +297,7 @@ async def scrolling_to_find_status(
             
             except ConnectionRefusedError:
                 restart_time = datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(seconds=error_retry_delay), '%H:%M:%S')
-                crawler_settings.log.warning(f'Twitter / X returns an error when loading \"{tab_url}\", next reloading will start {error_retry_delay} {"seconds" if error_retry_delay > 1 else "second"} later at {restart_time}.')
+                crawler_settings.log.warning(f'Twitter / X returns an error when loading [repr.url]{tab_url}[reset], next reloading will start {error_retry_delay} {"seconds" if error_retry_delay > 1 else "second"} later at {restart_time}.', extra={"markup": True})
 
                 # Update progress bar to pausing
                 progress.update(task, description=f'[yellow bold](Pausing)[reset] Loading [repr.number]{reload_count + 1}[reset]/[repr.number]{reload_times}[reset], [repr.number]{len(attempt_status_list)}[reset] status & [repr.number]{media_count}[reset] {"images" if media_count > 1 else "image"} detected after scrolling times:')
@@ -312,13 +312,13 @@ async def scrolling_to_find_status(
                     await tab.sleep()
                     not_from_retry_button = False  # Keep collected status and do not scroll up & update retry count
                 except:  # Failed to find the button, then reload the page
-                    crawler_settings.log.warning(f'Retry button is missing in \"{tab_url}\"! Refreshing this page.')
+                    crawler_settings.log.warning(f'Retry button is missing in [repr.url]{tab_url}[reset]! Refreshing this page.', extra={"markup": True})
                     await tab.get(tab_url)  # Refresh
                     retry_count -= 1  # Do not update retry count
                     not_from_retry_button = True
             except Exception as e:
-                output_msg_base = f'Failed to load page \"{tab_url}\" at attempt {retry_count}'
-                crawler_settings.log.warning(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}")
+                output_msg_base = f'Failed to load page [repr.url]{tab_url}[reset] at attempt {retry_count}'
+                crawler_settings.log.warning(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}", extra={"markup": True})
                 if retry_count < crawler_settings.download_config.retry_times - 1:  # Not the last reloading
                     await asyncio.sleep(crawler_settings.download_config.result_thread_delay)
                     await tab.get(tab_url)  # Refresh

@@ -3,6 +3,7 @@ import time
 import random
 
 import requests
+from rich import markup
 
 from typing import Optional
 import traceback
@@ -66,21 +67,21 @@ def pixiv_download_image_from_url(
                     )
 
                     if response.status_code == requests.status_codes.codes.ok:
-                        log.debug(f'Successfully connected to \"{url}\" at attempt {i + 1}.')
+                        log.debug(f'Successfully connected to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1}.', extra={"markup": True})
                         response_text = response.text
                         break
                     elif response.status_code == 429:
-                        log.warning(f'Connecting to \"{url}\" FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads and try again.')
+                        log.warning(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads and try again.', extra={"markup": True})
                         time.sleep(60 + random.random() * 60)
                     elif 400 <= response.status_code < 500:
-                        log.error(f'Connecting to \"{url}\" FAILED because response status code is {response.status_code}.')
+                        log.error(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED because response status code is {response.status_code}.', extra={"markup": True})
                         break
                     else:
-                        log.warning(f'Failed to connect to \"{url}\" at attempt {i + 1}. Response status code is {response.status_code}.')
+                        log.warning(f'Failed to connect to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1}. Response status code is {response.status_code}.', extra={"markup": True})
                     
                 except Exception as e:
-                    log.warning(f"Connecting to \"{url}\" at attempt {i + 1} FAILED because {e} Retry connecting.\n{traceback.format_exc()}",
-                                output_msg=f"Downloading \"{url}\" at attempt {i + 1} FAILED.")
+                    log.warning(f"Connecting to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1} FAILED because {e} Retry connecting.\n{traceback.format_exc()}",
+                                output_msg=f"Downloading [repr.url]{markup.escape(url)}[reset] at attempt {i + 1} FAILED.", extra={"markup": True})
                     time.sleep(download_config.result_fail_delay)
 
             # Parsing download page text
@@ -104,7 +105,7 @@ def pixiv_download_image_from_url(
             except:
                 raise ValueError("No image URLs are detected.")
         except Exception as e:
-            log.error(f"Failed to parse Pixiv image URLs from \"{url}\". This page might not exist, or not accessible without an account.")
+            log.error(f"Failed to parse Pixiv image URLs from [repr.url]{markup.escape(url)}[reset]. This page might not exist, or not accessible without an account.", extra={"markup": True})
             return 0, thread_id
         
         # Download images
@@ -123,7 +124,7 @@ def pixiv_download_image_from_url(
             )
             total_downloaded_size += image_size            
             if not is_success:
-                log.error(f"FAILED to download {image_name_list[j]} from {url_list[j]}")                
+                log.error(f"FAILED to download [repr.filename]{markup.escape(image_name_list[j])}[reset] from [repr.url]{markup.escape(url_list[j])}[reset]", extra={"markup": True})                
         return total_downloaded_size, thread_id
 
     # Type II: https://foo.bar.net/117469273_p0.jpg type
@@ -164,5 +165,5 @@ def pixiv_download_image_from_url(
         if is_success:
             return image_size, thread_id
         else:
-            log.error(f'FAILED to download "{image_name}" from \"{url}\"')
+            log.error(f'FAILED to download [repr.filename]{markup.escape(image_name)}[reset] from [repr.url]{markup.escape(url)}[reset]', extra={"markup": True})
             return 0, thread_id

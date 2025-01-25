@@ -163,13 +163,13 @@ class PixivKeywordParser(KeywordParser):
 
         first_page_url = parse.quote(f"{self.station_url}{self.pixiv_search_settings.build_search_appending_str_json(self.keyword_string)}", safe='/:?=&')
 
-        self.crawler_settings.log.info(f'Connecting to the first gallery page using keyword "{self.keyword_string}" and URL "{first_page_url}" ...')
+        self.crawler_settings.log.info(f'Connecting to the first gallery page using keyword "{self.keyword_string}" and URL [repr.url]{first_page_url}[reset] ...', extra={"markup": True})
             
         content = self.request_page_content(first_page_url, session=session, headers=json_search_page_headers)
 
         if content is None:
-            self.crawler_settings.log.critical(f"CANNOT connect to the first JSON page, URL: \"{first_page_url}\"")
-            raise ConnectionError(f"CANNOT connect to the first JSON page, URL: \"{first_page_url}\"")
+            self.crawler_settings.log.critical(f"CANNOT connect to the first JSON page, URL: [repr.url]{first_page_url}[reset]", extra={"markup": True})
+            raise ConnectionError(f"CANNOT connect to the first JSON page, URL: [repr.url]{first_page_url}[reset]", extra={"markup": True})
         else:
             self.crawler_settings.log.info(f'Successfully connected to the first JSON page.')
 

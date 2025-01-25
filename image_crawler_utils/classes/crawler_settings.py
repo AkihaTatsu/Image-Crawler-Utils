@@ -7,7 +7,7 @@ import logging, traceback
 import dill, base64, hashlib
 from typing import Optional, Union
 from collections.abc import Callable
-from rich import print
+from rich import print, markup
 
 import nodriver
 import asyncio
@@ -200,7 +200,7 @@ class CrawlerSettings:
             print('    - ' + str(key) + ': ' + str(value))
         # Have logging file info
         if self.log.logging_file_handler():
-            print(f'  - Logging file: \"{self.log.logging_file_path()}\"')
+            print(f'  - Logging file: [repr.filename]{markup.escape(self.log.logging_file_path())}[reset]')
             
         print('')
         print("========== Crawler Settings Ending ==========")
@@ -222,7 +222,7 @@ class CrawlerSettings:
             A bool. Successful connection returns True, in other cases returns False.
         """
 
-        self.log.info(f"Testing connectivity using url \"{url}\" ...")
+        self.log.info(f"Testing connectivity using url [repr.url]{markup.escape(url)}[reset] ...", extra={"markup": True})
         
         try:
             response = requests.get(
@@ -236,10 +236,10 @@ class CrawlerSettings:
                 self.log.info('Successfully connected.')
                 return True
             else:
-                self.log.error(f'Failed to connect to \"{url}\" because response code is {response.status_code}.')
+                self.log.error(f'Failed to connect to [repr.url]{markup.escape(url)}[reset] because response code is {response.status_code}.', extra={"markup": True})
                 return False
         except Exception as e:
-            self.log.error(f"Failed to connect to \"{url}\".\n{traceback.format_exc()}")
+            self.log.error(f"Failed to connect to [repr.url]{markup.escape(url)}[reset].\n{traceback.format_exc()}", extra={"markup": True})
             return False
         
 
@@ -250,7 +250,7 @@ class CrawlerSettings:
         headless: bool=True,
         stay_time: float=30,
     ):
-        self.log.info(f"Testing browser using url \"{url}\" ...")
+        self.log.info(f"Testing browser using url [repr.url]{markup.escape(url)}[reset] ...", extra={"markup": True})
         
         with CustomProgress(has_spinner=True, transient=True) as progress:
             task = progress.add_task(description='Loading browser components...', total=2)
@@ -426,10 +426,10 @@ class CrawlerSettings:
         try:
             with open(f_name, "wb") as f:
                 dill.dump(self, f)
-                self.log.info(f'{type(self).__name__} has been dumped into "{os.path.abspath(f_name)}"')
+                self.log.info(f'{type(self).__name__} has been dumped into [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
                 return f_name, os.path.abspath(f_name)
         except Exception as e:
-            self.log.error(f'Failed to dump {type(self).__name__} into "{os.path.abspath(f_name)}" because {e}\n{traceback.format_exc()}')
+            self.log.error(f'Failed to dump {type(self).__name__} into [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
             return None
         
     
@@ -453,9 +453,9 @@ class CrawlerSettings:
         try:
             with open(pkl_file, "rb") as f:
                 cls = dill.load(f)
-                log.info(f'{type(cls).__name__} has been successfully loaded from "{os.path.abspath(pkl_file)}"')
+                log.info(f'{type(cls).__name__} has been successfully loaded from [repr.filename]{markup.escape(os.path.abspath(pkl_file))}[reset]', extra={"markup": True})
             return cls
         except Exception as e:
-            log.error(f'Failed to load {type(cls).__name__} from "{os.path.abspath(pkl_file)}" because {e}\n{traceback.format_exc()}')
+            log.error(f'Failed to load {type(cls).__name__} from [repr.filename]{markup.escape(os.path.abspath(pkl_file))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
             return None
         

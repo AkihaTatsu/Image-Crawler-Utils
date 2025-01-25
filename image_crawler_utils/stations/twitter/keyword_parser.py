@@ -105,7 +105,7 @@ class TwitterKeywordMediaParser(KeywordParser):
         query_string = self.twitter_search_settings.build_search_appending_str(self.keyword_string)
         search_status_url = parse.quote(f'{self.station_url}search?q={query_string}&src=typed_query&f=live', safe='/:?=&')
 
-        self.crawler_settings.log.info(f'Loading searching page using query string "{query_string}" and URL "{search_status_url}" ...')
+        self.crawler_settings.log.info(f'Loading searching page using query string "{query_string}" and URL [repr.url]{search_status_url}[reset] ...', extra={"markup": True})
         
         flag_success = False
         for i in range(self.crawler_settings.download_config.retry_times):
@@ -115,7 +115,7 @@ class TwitterKeywordMediaParser(KeywordParser):
                     
                     # Connect once to get cookies
                     try:
-                        self.crawler_settings.log.debug(f"Connecting to twitter searching result: \"{search_status_url}\"")
+                        self.crawler_settings.log.debug(f"Connecting to twitter searching result: [repr.url]{search_status_url}[reset]", extra={"markup": True})
                         browser = await set_up_nodriver_browser(
                             proxies=self.crawler_settings.download_config.result_proxies,
                             headless=self.headless,
@@ -150,8 +150,8 @@ class TwitterKeywordMediaParser(KeywordParser):
                     self.crawler_settings.log.warning(f"Loading Twitter / X searching result page failed at attempt {i + 1} because {e}")
                     error_msg = e
         if not flag_success:
-            output_msg_base = f"Loading Twitter / X searching result page \"{search_status_url}\" failed"
-            self.crawler_settings.log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {error_msg}")
+            output_msg_base = f"Loading Twitter / X searching result page [repr.url]{search_status_url}[reset] failed"
+            self.crawler_settings.log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {error_msg}", extra={"markup": True})
             raise ConnectionError(f"{error_msg}")
 
         self.crawler_settings.log.info("Scrolling to get status...")

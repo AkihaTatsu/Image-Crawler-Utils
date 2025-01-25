@@ -1,8 +1,12 @@
 import os, sys
 from typing import Optional, Union
+from collections.abc import Mapping
 
 import logging, getpass
+import re
 import rich
+from rich import markup
+import rich.default_styles
 from rich.logging import RichHandler
 
 from image_crawler_utils.configs import DebugConfig
@@ -34,6 +38,10 @@ def print_logging_msg(
         msg: str,
         level: str='',
         debug_config: DebugConfig=DebugConfig.level("debug"),
+        exc_info=None,
+        stack_info: bool=False,
+        stacklevel: int=1,
+        extra: Mapping[str, object] | None=None,
     ):
     """
     Print time and message according to its logging level.
@@ -45,25 +53,32 @@ def print_logging_msg(
             - Set it to other string or leave it blank will always output msg string without any prefix.
         msg (str): The message string to output.
         debug_config (image_crawler_utils.configs.DebugConfig): DebugConfig that controls output level. Default set to debug-level (output all).
+        exc_info: Please refer to the `rich` document.
+        stack_info: Please refer to the `rich` document.
+        stacklevel: Please refer to the `rich` document.
+        extra: Please refer to the `rich` document.
     """
     
     if level.lower() == 'debug':
         if debug_config.show_debug:
-            __rich_logger.debug(msg)
+            __rich_logger.debug(msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
     elif level.lower() == 'info':
         if debug_config.show_info:
-            __rich_logger.info(msg)
+            __rich_logger.info(msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
     elif level.lower() == 'warning' or level.lower() == 'warn':
         if debug_config.show_warning:
-            __rich_logger.warning(msg)
+            __rich_logger.warning(msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
     elif level.lower() == 'error':
         if debug_config.show_error:
-            __rich_logger.error(msg)
+            __rich_logger.error(msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
     elif level.lower() == 'critical':
         if debug_config.show_critical:
-            __rich_logger.critical(msg)
+            __rich_logger.critical(msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
     else:
         rich.print(msg)
+
+
+##### Class
 
 
 class Log:
@@ -116,6 +131,25 @@ class Log:
             self.file_handler.setLevel(logging_level)
             self.logger.addHandler(self.file_handler)
 
+
+    # Escape styles before logging
+    def __escape_style(self, msg: str) -> str:
+        r"""
+        If [inside] is not a style, then turn [ into escaped character \[
+        """
+
+        pos_list = [[0, 0]]
+        possible_render_str_list = re.findall(r'\[[^\[\]]*?\]', msg)
+        for possible_render_str in possible_render_str_list:
+            if possible_render_str[1:-1] not in rich.default_styles.DEFAULT_STYLES.keys():
+                pos = msg.find(possible_render_str)
+                pos_list.append([pos, pos + len(possible_render_str)])
+        pos_list.append([len(msg), len(msg)])
+
+        new_msg = ''.join(msg[pos_list[i - 1][1]:pos_list[i][0]] + markup.escape(msg[pos_list[i][0]:pos_list[i][1]]) for i in range(1, len(pos_list))).replace('\\\\[', '\\[')
+        return new_msg
+
+
     # Check whether logging to file
     def logging_file_handler(self):
         """
@@ -124,6 +158,7 @@ class Log:
 
         return self.file_handler is not None
     
+
     # Output .log path
     def logging_file_path(self):
         """
@@ -135,71 +170,181 @@ class Log:
         else:
             return None
 
+
     # Five levels of logging
     # msg will be recorded in logging file
     # output_msg will be printed on console instead of msg if it isn't None.
-    def debug(self, msg: str, output_msg: Optional[str]=None):
+    def debug(
+            self,
+            msg: str,
+            output_msg: Optional[str]=None,
+            exc_info=None,
+            stack_info: bool=False,
+            stacklevel: int=1,
+            extra: Mapping[str, object] | None=None,
+        ):
         """
         Output debug messages.
 
         Parameters:
             msg (str): Logging message.
             output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+            exc_info: Please refer to the `rich` document.
+            stack_info: Please refer to the `rich` document.
+            stacklevel: Please refer to the `rich` document.
+            extra: Please refer to the `rich` document.
         """
 
-        self.logger.debug(msg)
-        print_logging_msg(output_msg if (output_msg is not None and not self.detailed_console_log) else msg, "debug", self.debug_config)
+        to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
+        self.logger.debug(to_file_msg)
+        print_logging_msg(
+            output_msg if (output_msg is not None and not self.detailed_console_log) else msg,
+            "debug",
+            self.debug_config,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
         return msg
 
-    def info(self, msg: str, output_msg: Optional[str]=None):
+
+    def info(
+            self,
+            msg: str,
+            output_msg: Optional[str]=None,
+            exc_info=None,
+            stack_info: bool=False,
+            stacklevel: int=1,
+            extra: Mapping[str, object] | None=None,
+        ):
         """
         Output info messages.
 
         Parameters:
             msg (str): Logging message.
             output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+            exc_info: Please refer to the `rich` document.
+            stack_info: Please refer to the `rich` document.
+            stacklevel: Please refer to the `rich` document.
+            extra: Please refer to the `rich` document.
         """
         
-        self.logger.info(msg)
-        print_logging_msg(output_msg if (output_msg is not None and not self.detailed_console_log) else msg, "info", self.debug_config)
+        to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
+        self.logger.info(to_file_msg)
+        print_logging_msg(
+            output_msg if (output_msg is not None and not self.detailed_console_log) else msg,
+            "info",
+            self.debug_config,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
         return msg
 
-    def warning(self, msg: str, output_msg: Optional[str]=None):
+
+    def warning(
+            self,
+            msg: str,
+            output_msg: Optional[str]=None,
+            exc_info=None,
+            stack_info: bool=False,
+            stacklevel: int=1,
+            extra: Mapping[str, object] | None=None,
+        ):
         """
         Output warning messages.
 
         Parameters:
             msg (str): Logging message.
             output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+            exc_info: Please refer to the `rich` document.
+            stack_info: Please refer to the `rich` document.
+            stacklevel: Please refer to the `rich` document.
+            extra: Please refer to the `rich` document.
         """
         
-        self.logger.warning(msg)
-        print_logging_msg(output_msg if (output_msg is not None and not self.detailed_console_log) else msg, "warning", self.debug_config)
+        to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
+        self.logger.warning(to_file_msg)
+        print_logging_msg(
+            output_msg if (output_msg is not None and not self.detailed_console_log) else msg,
+            "warning",
+            self.debug_config,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
         return msg
 
-    def error(self, msg: str, output_msg: Optional[str]=None):
+
+    def error(
+            self,
+            msg: str,
+            output_msg: Optional[str]=None,
+            exc_info=None,
+            stack_info: bool=False,
+            stacklevel: int=1,
+            extra: Mapping[str, object] | None=None,
+        ):
         """
         Output error messages.
 
         Parameters:
             msg (str): Logging message.
             output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+            exc_info: Please refer to the `rich` document.
+            stack_info: Please refer to the `rich` document.
+            stacklevel: Please refer to the `rich` document.
+            extra: Please refer to the `rich` document.
         """
         
-        self.logger.error(msg)
-        print_logging_msg(output_msg if (output_msg is not None and not self.detailed_console_log) else msg, "error", self.debug_config)
+        to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
+        self.logger.error(to_file_msg)
+        print_logging_msg(
+            output_msg if (output_msg is not None and not self.detailed_console_log) else msg,
+            "error",
+            self.debug_config,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
         return msg
 
-    def critical(self, msg: str, output_msg: Optional[str]=None):
+
+    def critical(
+            self,
+            msg: str,
+            output_msg: Optional[str]=None,
+            exc_info=None,
+            stack_info: bool=False,
+            stacklevel: int=1,
+            extra: Mapping[str, object] | None=None,
+        ):
         """
         Output critical messages.
 
         Parameters:
             msg (str): Logging message.
             output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
+            exc_info: Please refer to the `rich` document.
+            stack_info: Please refer to the `rich` document.
+            stacklevel: Please refer to the `rich` document.
+            extra: Please refer to the `rich` document.
         """
         
-        self.logger.critical(msg)
-        print_logging_msg(output_msg if (output_msg is not None and not self.detailed_console_log) else msg, "critical", self.debug_config)
+        to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
+        self.logger.critical(to_file_msg)
+        print_logging_msg(
+            output_msg if (output_msg is not None and not self.detailed_console_log) else msg,
+            "critical",
+            self.debug_config,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
         return msg
     

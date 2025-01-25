@@ -2,6 +2,7 @@ import dataclasses
 import json, dill
 import os
 from pathlib import Path
+from rich import markup
 
 from typing import Optional, Union, Any
 from collections.abc import Callable
@@ -69,10 +70,10 @@ def check_dir(dir_path: str, log: Log=Log()) -> None:
             return
         if not os.path.exists(test_dir_path):
             os.makedirs(test_dir_path)
-            log.info(f'Path "{os.path.abspath(test_dir_path)}" created.')
+            log.info(f'Path [repr.filename]{markup.escape(os.path.abspath(test_dir_path))}[reset] created.', extra={"markup": True})
     except Exception as e:
-        output_msg_base = f'Creation of path "{os.path.abspath(test_dir_path)}" FAILED'
-        log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}")
+        output_msg_base = f'Creation of path [repr.filename]{markup.escape(os.path.abspath(test_dir_path))}[reset] FAILED'
+        log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}", extra={"markup": True})
         raise OSError(output_msg_base)
 
 
@@ -118,20 +119,20 @@ def save_dataclass(
             f_name = f_name.replace(".json.json", ".json")  # If .json is already contained in file_name, skip it
             with open(f_name, "w", encoding=encoding) as f:
                 json.dump(dataclasses.asdict(dataclass), f, indent=4, ensure_ascii=False)
-                log.info(f'{type(dataclass).__name__} dataclass has been saved at "{os.path.abspath(f_name)}"')
+                log.info(f'{type(dataclass).__name__} dataclass has been saved at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
                 return f_name, os.path.abspath(f_name)
         elif ftype == 'pkl':
             f_name = os.path.join(path, f"{file_name}.pkl")
             f_name = f_name.replace(".pkl.pkl", ".pkl")  # If .pkl is already contained in file_name, skip it
             with open(f_name, "wb") as f:
                 dill.dump(dataclass, f)
-                log.info(f'{type(dataclass).__name__} dataclass has been saved at "{os.path.abspath(file_name)}"')
+                log.info(f'{type(dataclass).__name__} dataclass has been saved at [repr.filename]{markup.escape(os.path.abspath(file_name))}[reset]', extra={"markup": True})
                 return f_name, os.path.abspath(f_name)
         else:
             raise ValueError('file_type must be one of "json" or "pkl".')
         
     except Exception as e:
-        log.error(f'Failed to save dataclass at "{os.path.abspath(file_name)}" because {e}\n{traceback.format_exc()}')
+        log.error(f'Failed to save dataclass at [repr.filename]{markup.escape(os.path.abspath(file_name))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
         return None
 
 
@@ -172,20 +173,20 @@ def load_dataclass(
                 dataclass_dict = json.load(f)
                 for fields in dataclasses.fields(dataclass_to_load):
                     setattr(dataclass_to_load, fields.name, dataclass_dict[fields.name])
-                log.info(f'{type(dataclass_to_load).__name__} dataclass has been loaded from "{os.path.abspath(file_name)}"')
+                log.info(f'{type(dataclass_to_load).__name__} dataclass has been loaded from [repr.filename]{markup.escape(os.path.abspath(file_name))}[reset]', extra={"markup": True})
                 return dataclass_to_load
         elif ftype == 'pkl':
             with open(file_name, "rb") as f:
                 dataclass = dill.load(f)
                 for fields in dataclasses.fields(dataclass_to_load):
                     setattr(dataclass_to_load, fields.name, getattr(dataclass, fields.name))
-                log.info(f'{type(dataclass_to_load).__name__} dataclass has been loaded from "{os.path.abspath(file_name)}"')
+                log.info(f'{type(dataclass_to_load).__name__} dataclass has been loaded from [repr.filename]{markup.escape(os.path.abspath(file_name))}[reset]', extra={"markup": True})
                 return dataclass_to_load
         else:
             raise ValueError('file_type must be one of "json" or "pkl".')
         
     except Exception as e:
-        log.error(f'Failed to load data from "{os.path.abspath(file_name)}" because {e}\n{traceback.format_exc()}')
+        log.error(f'Failed to load data from [repr.filename]{markup.escape(os.path.abspath(file_name))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
         return None
 
 

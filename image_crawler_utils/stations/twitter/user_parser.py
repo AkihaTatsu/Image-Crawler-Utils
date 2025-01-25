@@ -137,7 +137,7 @@ class TwitterUserMediaParser(Parser):
         search_str = search_setting.build_search_appending_str('')
         url = parse.quote(f'{self.station_url}search?q={search_str}&src=typed_query&f=live', safe='/:?=&')
         tab = await browser.get(url, new_tab=True)
-        self.crawler_settings.log.debug(f'Starting thread {thread_id + 1}/{len(self.search_settings_list)} to detect Twitter / X status from \"{url}\".')
+        self.crawler_settings.log.debug(f'Starting thread {thread_id + 1}/{len(self.search_settings_list)} to detect Twitter / X status from [repr.url]{url}[reset].', extra={"markup": True})
         result_status_list, media_count = await scrolling_to_find_status(
             tab=tab, 
             tab_url=url,

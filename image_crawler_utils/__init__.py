@@ -40,6 +40,7 @@ import shutil
 import time
 import atexit
 
+from rich import markup
 from nodriver.core.util import deconstruct_browser, __registered__instances__
 
 from image_crawler_utils.log import Log
@@ -66,11 +67,11 @@ def silent_deconstruct_browser(log: Log=Log()):
                 break
             except (PermissionError, OSError) as e:
                 if attempt == 4:
-                    log.error(f'Has problem when removing temp data directory "{_.config.user_data_dir}"; consider checking whether it\'s there and removing it manually. Error: {e}')
+                    log.error(f'Has problem when removing temp data directory [repr.filename]{markup.escape(_.config.user_data_dir)}[reset]; consider checking whether it\'s there and removing it manually. Error: {e}', extra={"markup": True})
                     break
                 time.sleep(0.15)
                 continue
-        log.debug(f"Successfully removed temp profile {_.config.user_data_dir}")
+        log.debug(f"Successfully removed temp profile [repr.filename]{markup.escape(_.config.user_data_dir)}[reset]", extra={"markup": True})
 
 
 atexit.unregister(deconstruct_browser)  # NO MORE SPAMMING!

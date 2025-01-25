@@ -2,6 +2,7 @@ import dataclasses
 import pathvalidate
 import json, os, traceback
 from typing import Iterable, Optional
+from rich import markup
 
 from image_crawler_utils.log import Log
 from image_crawler_utils.progress_bar import CustomProgress
@@ -80,7 +81,7 @@ def save_image_infos(
                 f_name = f_name.replace(".json.json", ".json")  # If .json is already contained in json_file, skip it
                 with open(f_name, mode="wb") as f:
                     f.write(dict_list_data)
-                log.info(f'The list of ImageInfo has been saved at "{os.path.abspath(f_name)}"')
+                log.info(f'The list of ImageInfo has been saved at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
                 progress.update(task, description="[green]ImageInfo successfully saved!", advance=1)
         else:
             dict_list = [
@@ -96,11 +97,11 @@ def save_image_infos(
             f_name = f_name.replace(".json.json", ".json")  # If .json is already contained in json_file, skip it
             with open(f_name, mode="wb") as f:
                 f.write(dict_list_data)
-            log.info(f'The list of ImageInfo has been saved at "{os.path.abspath(f_name)}"')
+            log.info(f'The list of ImageInfo has been saved at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
 
         return f_name, os.path.abspath(f_name)
     except Exception as e:
-        log.error(f'Failed to save the list of ImageInfo at "{os.path.abspath(f_name)}" because {e}\n{traceback.format_exc()}')
+        log.error(f'Failed to save the list of ImageInfo at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
         return None
 
 
@@ -155,9 +156,9 @@ def load_image_infos(
                 info=item["info"],
             ) for item in dict_list]
 
-        log.info(f'The list of ImageInfo has been loaded from "{os.path.abspath(json_file)}"')
+        log.info(f'The list of ImageInfo has been loaded from [repr.filename]{markup.escape(os.path.abspath(json_file))}[reset]', extra={"markup": True})
         return image_info_list
 
     except Exception as e:
-        log.error(f'Failed to load the list of ImageInfo from "{os.path.abspath(json_file)}" because {e}\n{traceback.format_exc()}')
+        log.error(f'Failed to load the list of ImageInfo from [repr.filename]{markup.escape(os.path.abspath(json_file))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
         return None

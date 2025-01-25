@@ -3,6 +3,7 @@ import re
 
 import requests
 
+from rich import markup
 import nodriver
 
 from typing import Optional
@@ -35,7 +36,7 @@ async def __get_image_from_status(
     task = progress.add_task(description='Loading browser components...', total=3)
     # Connect once to get cookies
     try:
-        log.debug(f"Parsing Twitter / X status page: \"{url}\"")
+        log.debug(f"Parsing Twitter / X status page: [repr.url]{markup.escape(url)}[reset]", extra={"markup": True})
         browser = await set_up_nodriver_browser(
             proxies=download_config.result_proxies,
         )
@@ -145,8 +146,8 @@ async def __twitter_download_image_from_status(
             log.warning(f"Parsing Twitter / X status page failed at attempt {i + 1} because {e}")
             error_msg = e
     if available_src is None:
-        output_msg_base = f"Parsing Twitter / X status page \"{url}\" failed"
-        log.error(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {error_msg}")
+        output_msg_base = f"Parsing Twitter / X status page [repr.url]{markup.escape(url)}[reset] failed"
+        log.error(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {error_msg}", extra={"markup": True})
         return (0, thread_id)
     
     # Edit URLs and names
@@ -185,7 +186,7 @@ async def __twitter_download_image_from_status(
         total_downloaded_size += image_size
         
         if not is_success:
-            log.error(f"FAILED to download {image_name_list[j]} from {url_list[j]}")
+            log.error(f"FAILED to download [repr.filename]{markup.escape(image_name_list[j])}[reset] from [repr.url]{markup.escape(url_list[j])}[reset]", extra={"markup": True})
 
     return total_downloaded_size, thread_id
 

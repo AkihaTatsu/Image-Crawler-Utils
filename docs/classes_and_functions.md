@@ -407,6 +407,12 @@ Its attributes include:
     + `output_msg`: The message that will be print to console if set to a string.
       + Set `output_msg` to `None` (default) will output `msg` onto the console instead.
       + Can be used to simplify messages displayed on console, while `msg` can contain full information.
+    + As `Log` uses `rich` to log messages onto the console, any parameters supported by `rich` is also accepted (like `exc_info`, `stack_info`, `stacklevel` and `extra`). For example, set `extra={"markup": True}` allows using `rich` styling format like `[green]`, `[reset]`, etc.
+  
+      ```Python
+      log.info('[green]Messages in green color[reset]', extra={"markup": True})
+      ```
+  
     + **ATTENTION:** Whether the messages will be logged into files / logged onto console is respectively controlled by the `logging_level` and `debug_config` when you create the current Log class.
   
 ### print_logging_msg()

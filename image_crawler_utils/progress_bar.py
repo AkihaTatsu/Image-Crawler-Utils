@@ -201,7 +201,7 @@ class CustomProgress(Progress):
 
         console=None,
         auto_refresh=True,
-        refresh_per_second=10,
+        refresh_per_second=20,
         speed_estimate_period=30,
         transient=False,
         redirect_stdout=True,

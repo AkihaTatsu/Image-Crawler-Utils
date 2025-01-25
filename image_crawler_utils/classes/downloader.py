@@ -6,7 +6,7 @@ import dill
 import traceback
 from concurrent import futures
 import requests
-from rich import print
+from rich import print, markup
 from rich.progress import SpinnerColumn
 
 from image_crawler_utils import Cookies, CrawlerSettings
@@ -110,10 +110,10 @@ class Downloader:
         try:
             with open(f_name, "wb") as f:
                 dill.dump(self, f)
-                self.crawler_settings.log.info(f'{type(self).__name__} has been dumped into "{os.path.abspath(f_name)}"')
+                self.crawler_settings.log.info(f'{type(self).__name__} has been dumped into [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
                 return f_name, os.path.abspath(f_name)
         except Exception as e:
-            self.crawler_settings.log.error(f'Failed to dump {type(self).__name__} into "{os.path.abspath(f_name)}" because {e}\n{traceback.format_exc()}')
+            self.crawler_settings.log.error(f'Failed to dump {type(self).__name__} into [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
             return None
         
     
@@ -137,10 +137,10 @@ class Downloader:
         try:
             with open(pkl_file, "rb") as f:
                 cls = dill.load(f)
-                log.info(f'{type(cls).__name__} has been successfully loaded from "{os.path.abspath(pkl_file)}"')
+                log.info(f'{type(cls).__name__} has been successfully loaded from [repr.filename]{markup.escape(os.path.abspath(pkl_file))}[reset]', extra={"markup": True})
             return cls
         except Exception as e:
-            log.error(f'Failed to load {type(cls).__name__} from "{os.path.abspath(pkl_file)}" because {e}\n{traceback.format_exc()}')
+            log.error(f'Failed to load {type(cls).__name__} from [repr.filename]{markup.escape(os.path.abspath(pkl_file))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
             return None
     
 
@@ -197,7 +197,7 @@ class Downloader:
 
         if isinstance(self.store_path, str):  # Single store path
             check_dir(self.store_path, self.crawler_settings.log)
-            self.crawler_settings.log.info(f'Images will be saved at "{os.path.abspath(self.store_path)}"')
+            self.crawler_settings.log.info(f'Images will be saved at [repr.filename]{markup.escape(os.path.abspath(self.store_path))}[reset]', extra={"markup": True})
         else:  # List of store paths
             for ord in filtered_ordinals_list:
                 check_dir(self.store_path[ord], self.crawler_settings.log)
@@ -268,7 +268,7 @@ class Downloader:
 
                                 # If there are backup URLs, record it
                                 if len(self.image_info_list[filtered_ordinals_list[failed_n]].backup_urls) >= fail_count[failed_n]:
-                                    self.crawler_settings.log.info(f"Found other URLs, putting {self.image_info_list[filtered_ordinals_list[failed_n]].name} into downloading queue again.")
+                                    self.crawler_settings.log.info(f"Found other URLs, putting [repr.filename]{markup.escape(self.image_info_list[filtered_ordinals_list[failed_n]].name)}[reset] into downloading queue again.", extra={"markup": True})
                                     if failed_n not in failed_ids:
                                         failed_ids.append(failed_n)
                                 else:
@@ -329,8 +329,8 @@ class Downloader:
         print('\nBasic Info:')
         try:
             print(f"  - Image info filter: {self.image_info_filter}")
-            print(f"  - Store path: \"{self.store_path}\"")
-            print(f"  - Absolute store path: \"{os.path.abspath(self.store_path)}\"")
+            print(f"  - Store path: [repr.filename]{markup.escape(self.store_path)}[reset]")
+            print(f"  - Absolute store path: [repr.filename]{markup.escape(os.path.abspath(self.store_path))}[reset]")
         except Exception as e:
             print(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
 

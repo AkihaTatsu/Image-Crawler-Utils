@@ -150,8 +150,8 @@ class SafebooruKeywordParser(KeywordParser):
         # Get content
         content = self.request_page_content(first_page_url, session=session)
         if content is None:
-            self.crawler_settings.log.critical(f"CANNOT connect to the first gallery page, URL: \"{first_page_url}\"")
-            raise ConnectionError(f"CANNOT connect to the first gallery page, URL: \"{first_page_url}\"")
+            self.crawler_settings.log.critical(f"CANNOT connect to the first gallery page, URL: [repr.url]{first_page_url}[reset]", extra={"markup": True})
+            raise ConnectionError(f"CANNOT connect to the first gallery page, URL: [repr.url]{first_page_url}[reset]", extra={"markup": True})
         else:
             self.crawler_settings.log.info(f'Successfully connected to the first gallery page.')
 
