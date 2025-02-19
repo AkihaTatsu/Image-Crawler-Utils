@@ -75,7 +75,7 @@ def print_logging_msg(
         if debug_config.show_critical:
             __rich_logger.critical(msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
     else:
-        rich.print(msg)
+        rich.print(msg, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
 
 
 ##### Class
@@ -143,10 +143,14 @@ class Log:
         for possible_render_str in possible_render_str_list:
             if possible_render_str[1:-1] not in rich.default_styles.DEFAULT_STYLES.keys():
                 pos = msg.find(possible_render_str)
-                pos_list.append([pos, pos + len(possible_render_str)])
+                if pos >= 1 and msg[pos - 1] == '\\':
+                    if pos >= 2 and msg[pos - 2] == '\\':
+                        pos_list.append([pos, pos + len(possible_render_str)])
+                else:
+                    pos_list.append([pos, pos + len(possible_render_str)])
         pos_list.append([len(msg), len(msg)])
 
-        new_msg = ''.join(msg[pos_list[i - 1][1]:pos_list[i][0]] + markup.escape(msg[pos_list[i][0]:pos_list[i][1]]) for i in range(1, len(pos_list))).replace('\\\\[', '\\[')
+        new_msg = ''.join(msg[pos_list[i - 1][1]:pos_list[i][0]] + markup.escape(msg[pos_list[i][0]:pos_list[i][1]]) for i in range(1, len(pos_list)))
         return new_msg
 
 

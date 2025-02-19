@@ -963,7 +963,7 @@ new_downloader = Downloader.load_from_pkl('downloader.pkl')
 download_traffic, succeeded_list, failed_list, skipped_list = downloader.run()
 ```
 
-+ `download_traffic`：当前下载图片的总大小（MB）。
++ `download_traffic`：当前下载图片的总大小（Bytes）。
 + `succeeded_list`：一个ImageInfo的列表，包含所有下载成功的图片。
 + `failed_list`：一个ImageInfo的列表，包含所有下载失败的图片。
   + 由于已下载图片总大小达到CapacityCountConfig中`capacity`的值导致未能下载的剩余图片会被归类到此列表中。

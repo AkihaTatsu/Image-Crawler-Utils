@@ -44,7 +44,7 @@ class Downloader:
             cookies (crawler_utils.cookies.Cookies, str, dict or list, optional): Cookies containing logging information.
             
         Attributes:
-            run(): Running the downloader. Return total image size and succeeded, failed and skipped ImageInfo list.
+            run(): Running the downloader. Return total image size (Bytes) and succeeded, failed and skipped ImageInfo list.
             display_all_configs(): Display all configs of downloader.
         """
         
@@ -78,7 +78,7 @@ class Downloader:
         download_traffic, succeeded_ordinals_list, failed_ordinals_list = self.download_images(download_num, filtered_ordinals_list)
 
         # Conclude
-        self.crawler_settings.log.info(f"{len(succeeded_ordinals_list)} succeeded ({download_traffic:.2f} MB in total), {len(failed_ordinals_list)} failed, {len(skipped_ordinals_list)} skipped.")
+        self.crawler_settings.log.info(f"{len(succeeded_ordinals_list)} succeeded ({download_traffic / 2**20:.2f} MB in total), {len(failed_ordinals_list)} failed, {len(skipped_ordinals_list)} skipped.")
 
         # Convert ordinal list into ImageInfo list
         succeeded_image_info_list = [self.image_info_list[i] for i in succeeded_ordinals_list]
@@ -205,7 +205,7 @@ class Downloader:
 
         self.crawler_settings.log.info("Starting image downloading.", output_msg="========== Start Image Downloading ==========")
         self.crawler_settings.log.info(f"Total downloading num: {download_num}")
-        download_traffic = 0.0
+        download_traffic = 0
         succeeded_id = []
 
         # Start downloading
@@ -256,13 +256,13 @@ class Downloader:
                             if thread.result()[0] > 0:
                                 # Successful download
                                 succeeded_n = thread.result()[1]
-                                download_traffic += thread.result()[0] / 2**20
+                                download_traffic += thread.result()[0]
                                 succeeded_id.append(succeeded_n)
                                 undone_ids.remove(succeeded_n)
-                                progress_group.main_count_bar.update(task, advance=1, description=f"Downloading [repr.number]{download_traffic:.2f}[reset] MB:")
+                                progress_group.main_count_bar.update(task, advance=1, description=f"Downloading [repr.number]{download_traffic / 2**20:.2f}[reset] MB:")
                             else:
                                 # Failed download
-                                download_traffic += thread.result()[0] / 2**20
+                                download_traffic += thread.result()[0]
                                 failed_n = thread.result()[1]
                                 fail_count[failed_n] += 1
 
@@ -272,13 +272,13 @@ class Downloader:
                                     if failed_n not in failed_ids:
                                         failed_ids.append(failed_n)
                                 else:
-                                    progress_group.main_count_bar.update(task, advance=1, description=f"Downloading [repr.number]{download_traffic:.2f}[reset] MB:")
+                                    progress_group.main_count_bar.update(task, advance=1, description=f"Downloading [repr.number]{download_traffic / 2**20:.2f}[reset] MB:")
                                     # Remove from failed_ids recording
                                     if failed_n in failed_ids:
                                         failed_ids.remove(failed_n)
                                     undone_ids.remove(failed_n)
 
-                            if self.crawler_settings.capacity_count_config.capacity is not None and download_traffic > self.crawler_settings.capacity_count_config.capacity:
+                            if self.crawler_settings.capacity_count_config.capacity is not None and download_traffic / 2**20 > self.crawler_settings.capacity_count_config.capacity:
                                 self.crawler_settings.log.warning("Downloading capacity reached!")
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 undone_ids = []
@@ -287,9 +287,9 @@ class Downloader:
                                 break
             
             if shutdown_flag:  # Interrupted!
-                progress_group.main_count_bar.update(task, description=f"[red]Downloading interrupted! [repr.number]{download_traffic:.2f}[reset] MB:")
+                progress_group.main_count_bar.update(task, description=f"[red]Downloading interrupted! [repr.number]{download_traffic / 2**20:.2f}[reset] MB:")
             else:  # Finished normally, set progress bar to finished state
-                progress_group.main_count_bar.update(task, description=f"[green]Downloading finished! [repr.number]{download_traffic:.2f}[reset] MB:")
+                progress_group.main_count_bar.update(task, description=f"[green]Downloading finished! [repr.number]{download_traffic / 2**20:.2f}[reset] MB:")
 
         succeeded_ordinals_list = [filtered_ordinals_list[i] 
                                    for i in succeeded_id]

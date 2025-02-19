@@ -81,8 +81,8 @@ def download_image(
                 stream=True,
             )
         except Exception as e:
-            log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED because {e}{" Retry downloading." if i < download_config.retry_times - 1 else " "}\n{traceback.format_exc()}',
-                        output_msg=f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED.{" Retry downloading." if i < download_config.retry_times - 1 else " "}', extra={"markup": True})
+            log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED because {e}{" Retry downloading." if i < download_config.retry_times - 1 else ""}\n{traceback.format_exc()}',
+                        output_msg=f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED.{" Retry downloading." if i < download_config.retry_times - 1 else ""}', extra={"markup": True})
             if os.path.exists(image_path):  # Remove tmp file
                 os.remove(image_path)
             time.sleep(download_config.result_fail_delay)
@@ -116,7 +116,7 @@ def download_image(
                         # Detect incomplete image
                         if downloaded_size != image_size:
                             time.sleep(download_config.result_fail_delay)
-                            log.warning(f'[repr.filename]{markup.escape(image_name)}[reset] downloaded at attempt {i + 1} is incomplete.{" Retry downloading." if i < download_config.retry_times - 1 else " "}', extra={"markup": True})
+                            log.warning(f'[repr.filename]{markup.escape(image_name)}[reset] downloaded at attempt {i + 1} is incomplete.{" Retry downloading." if i < download_config.retry_times - 1 else ""}', extra={"markup": True})
                             continue
 
                     progress.finish_task(task)  # Hide progress bar
@@ -164,13 +164,13 @@ def download_image(
                     log.error(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] FAILED because response status code is {response.status_code} from [repr.url]{markup.escape(url)}[reset]', extra={"markup": True})
                     break
                 else:
-                    log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} from [repr.url]{markup.escape(url)}[reset] FAILED because response code is {response.status_code}.{" Retry downloading." if i < download_config.retry_times - 1 else " "}', extra={"markup": True})
+                    log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} from [repr.url]{markup.escape(url)}[reset] FAILED because response code is {response.status_code}.{" Retry downloading." if i < download_config.retry_times - 1 else ""}', extra={"markup": True})
                     time.sleep(download_config.result_fail_delay)
                     continue
             
         except Exception as e:
-            log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED because {e}{" Retry downloading." if i < download_config.retry_times - 1 else " "}\n{traceback.format_exc()}',
-                        output_msg=f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED.{" Retry downloading." if i < download_config.retry_times - 1 else " "}', extra={"markup": True})
+            log.warning(f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED because {e}{" Retry downloading." if i < download_config.retry_times - 1 else ""}\n{traceback.format_exc()}',
+                        output_msg=f'Downloading [repr.filename]{markup.escape(image_name)}[reset] at attempt {i + 1} FAILED.{" Retry downloading." if i < download_config.retry_times - 1 else ""}', extra={"markup": True})
             progress.finish_task(task)  # Hide progress bar
             if os.path.exists(image_path):  # Remove tmp file
                 os.remove(image_path)

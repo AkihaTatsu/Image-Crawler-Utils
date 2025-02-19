@@ -966,7 +966,7 @@ new_downloader = Downloader.load_from_pkl('downloader.pkl')
 download_traffic, succeeded_list, failed_list, skipped_list = downloader.run()
 ```
 
-+ `download_traffic`: A float denoting the total size (MB) of images downloaded.
++ `download_traffic`: A float denoting the total size (in bytes) of images downloaded.
 + `succeeded_list`: A list of ImageInfo containing successfully downloaded images.
 + `failed_list`: A list of ImageInfo containing images failed to be downloaded.
   + Images not downloaded due to reaching `capacity` defined in CapacityCountConfig will be classified to this list.
