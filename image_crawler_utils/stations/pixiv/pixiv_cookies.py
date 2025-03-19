@@ -49,10 +49,13 @@ async def __get_pixiv_cookies(
 
             while True:  # As long as no successful loggin in, continue this loop
                 try:
-                    await tab.find('div[id="root"]', timeout=1)
+                    await tab.find('div[id="__next"]', timeout=1)  # New version
                     break
                 except:
-                    continue
+                    try:
+                        await tab.find('div[id="root"]', timeout=1)  # Old version
+                    except:
+                        continue
 
             progress.update(task, advance=1, description="Parsing cookies...")
 
