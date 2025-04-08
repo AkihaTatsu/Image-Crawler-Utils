@@ -30,9 +30,16 @@ class Empty:
 ##### Shortened file name
 
 
+def attempt_name_len() -> int:
+    try:
+        return (os.get_terminal_size().columns - 10) // 5
+    except:
+        return 10
+
+
 def shorten_file_name(
     file_name: str,
-    name_len: int=(os.get_terminal_size().columns - 10) // 5,
+    name_len: int=attempt_name_len(),
 ) -> str:
     """
     Shorten file name for displaying on console.

@@ -427,7 +427,7 @@ parser.save_to_pkl('parser.pkl')
 new_parser = DanbooruKeywordParser.load_from_pkl('parser.pkl')
 ```
 
-使用`.display_all_configs()`检查当前Parser的所有参数。
+Use `.display_all_configs()` to check all parameters of current Parser.
 
 ### Acquiring Cookies
 

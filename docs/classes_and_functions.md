@@ -487,12 +487,12 @@ Besides the parameters of `rich.progress.Progress`, its parameters also include:
 + `text_only`: If set to `True`, Progress bars will only display descriptions. Default is `False`.
   + When set to `True`, all other columns except `rich.progress.TextColumn("[progress.description]{task.description}[reset]")` will be omitted!
 + `has_spinner`: If set to `True`, a spinner will be added to the left. Default is `False`.
-+ `spinner_name`: The type of the spinner, which can be referred from [this page of cli-spinners](https://jsfiddle.net/sindresorhus/2eLtsbey/embedded/result/) Default is `"dots"`.
++ `spinner_name`: The type of the spinner, which can be referred from [this page of cli-spinners](https://jsfiddle.net/sindresorhus/2eLtsbey/embedded/result/). Default is `"dots"`.
 + `has_total`: Set to `True` if involved tasks have total numbers. Default is `False`.
 + `is_file`: Set to `True` if involved tasks deal with files. Default is `False`.
 + `time_format`: A string that controls the time format. Default is `"%H:%M:%S"`.
   + `%H` means hours, `%M` means minutes, `%S` means seconds, `%L` means miliseconds.
-+ `is_compact_time_format`: When set to `True` (default), the `time_format` will be truncated to start from `'%M'` when time is lower than 1 hour. Default is `False`.
++ `is_compact_time_format`: When set to `True` (default), the `time_format` will be truncated to start from `'%M'` when time is lower than 1 hour.
   + For example, `"%H:%M:%S.%L"` will be truncated to `"%M:%S.%L"` when time is lower than 1 hour.
 + `is_sub_process`: Set to `True` if it is a subprocess of a certain ProgressGroup. Default is `False`.
 + If you add ProgressColumns to CustomProgress like normal `rich.progress.Progress` class, it will be placed between of `BarColumn` & `TaskProgressColumn` (i.e. the progress bar and percentage) and `TimeColumnLeft`.
@@ -601,12 +601,12 @@ import os
 
 shorten_file_name(
     file_name: str,
-    name_len: int=(os.get_terminal_size().columns - 10) // 5,
+    name_len: int,
 ) -> str
 ```
 
 + `file_name`: Name of the file.
-+ `name_len`: Restricted length of file name.
++ `name_len`: Restricted length of file name. Default is `(os.get_terminal_size().columns - 10) // 5` if console is available, or `10` if console is not available.
 
 ### check_dir()
 
