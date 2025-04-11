@@ -245,9 +245,17 @@ async def set_up_nodriver_browser(
     
     config = nodriver.Config(browser_args=browser_args)
     
-    browser = await nodriver.start(
-        config=config,
-    )
+    try:
+        browser = await nodriver.start(
+            config=config,
+        )
+    except:  # Try restarting with no_sandbox=True when running as Linux root user
+        browser_args.append("--no-sandbox")
+        config = nodriver.Config(browser_args=browser_args)
+        browser = await nodriver.start(
+            config=config,
+        )
+
     
     if no_image_stylesheet:
         pattern_list = [
