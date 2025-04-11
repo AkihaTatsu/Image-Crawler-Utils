@@ -53,7 +53,7 @@ def silent_deconstruct_browser(log: Log=Log()):
     This function will do the same thing without those spamming messages.
 
     Parameters:
-        log (image_crawler_utils.log.Log): Set to debug level to display those spamming messages again.
+        log (image_crawler_utils.log.Log): Displaying those spamming messages.
     """
 
     for _ in __registered__instances__:

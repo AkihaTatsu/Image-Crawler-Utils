@@ -6,7 +6,7 @@ authors = [
 maintainers = [
     {name = "AkihaTatsu", email = "akihareinhardt@yeah.net"},
 ]
-version = "0.3.0"
+version = "0.3.1"
 description = "A rather customizable image crawler structure, designed to download images with their information using multi-threading method. Besides, several wheels have been implemented to help better build a custom image crawler for yourself."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -19,7 +19,7 @@ dependencies = [
     "pathvalidate",
     "Requests",
     "rich",
-    "websockets<=13.1",
+    "websockets",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
