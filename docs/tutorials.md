@@ -442,12 +442,14 @@ cookies = get_pixiv_cookies(
     pixiv_id="mail@address",
     password="password",
     proxies={"proxy_type": "proxy_address"},
+    headless=False, 
 )
 ```
 
 + `pixiv_id`: Your Pixiv ID or mail address. Leave it blank to input manually.
 + `password`: Your password for Pixiv account. Leave it blank to input manually.
 + `proxies`: Proxies to use when opening the logging-in webpage. It uses the same form as the one in [DownloadConfig](#downloadconfig).
++ `headless`: A `bool` parameter controlling whether to use the headless mode (not displaying the browser window). Default is `False`. **It is strongly recommended to not set it to `True`**, as it may cause failure in passing protections like CAPTCHA and e-mail verification.
 
 `get_pixiv_cookies()` uses a browser to generate a browser window to log in. If some confirmation process (e.g. reCAPTCHA check, mail confirmation, etc.) is required, you need to finish it manually.
 

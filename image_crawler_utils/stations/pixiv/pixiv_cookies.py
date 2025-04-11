@@ -16,8 +16,12 @@ async def __get_pixiv_cookies(
     pixiv_id: Optional[str]=None, 
     password: Optional[str]=None, 
     proxies: Optional[dict]=None, 
+    headless: bool=False, 
     log: Log=Log(),
 ) -> Optional[Cookies]:
+    if headless:
+        log.warning(f"You are using headless mode to get cookies, this might result in failure as verifications like CAPTCHA are not manually passed!")
+
     log.info(f"Getting cookies by logging in to https://www.pixiv.net/ ...")
     
     with CustomProgress(has_spinner=True, transient=True) as progress:
@@ -26,7 +30,7 @@ async def __get_pixiv_cookies(
         try:
             browser = await set_up_nodriver_browser(
                 proxies=proxies,
-                headless=False,
+                headless=headless,
                 window_width=800,
                 window_height=600,
             )
@@ -74,6 +78,7 @@ def get_pixiv_cookies(
     pixiv_id: Optional[str]=None, 
     password: Optional[str]=None, 
     proxies: Optional[dict]=None, 
+    headless: bool=False, 
     log: Log=Log(),
 ) -> Optional[Cookies]:
     """
@@ -83,6 +88,7 @@ def get_pixiv_cookies(
         pixiv_id (str, optional): Your Pixiv ID or mail address. Leave it to input manually.
         password (str, optional): Your Pixiv password. Leave it to input manually.
         proxies (dict, optional): The proxies you use. Must be requests type.
+        headless (bool, optional): Use headless mode. Default is False.
         log (crawler_utils.log.Log, optional): Logging config.
 
     Returns:
@@ -94,6 +100,7 @@ def get_pixiv_cookies(
             pixiv_id=pixiv_id,
             password=password,
             proxies=proxies,
+            headless=headless,
             log=log,
         )
     )
