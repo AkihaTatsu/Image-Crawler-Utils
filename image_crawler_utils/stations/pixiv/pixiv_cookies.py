@@ -17,6 +17,7 @@ async def __get_pixiv_cookies(
     password: Optional[str]=None, 
     proxies: Optional[dict]=None, 
     headless: bool=False, 
+    waiting_seconds: float=60.0, 
     log: Log=Log(),
 ) -> Optional[Cookies]:
     if headless:
@@ -37,11 +38,11 @@ async def __get_pixiv_cookies(
             
             progress.update(task, advance=1, description="Loading login page...")
 
-            tab = await browser.get("https://accounts.pixiv.net/login?lang=en", new_tab=True)
-            user_input = await tab.find('input[placeholder="E-mail address or pixiv ID"]', timeout=30)
+            tab = await browser.get("https://accounts.pixiv.net/login?lang=en")
+            user_input = await tab.select('input[placeholder="E-mail address or pixiv ID"]', timeout=30)
             if pixiv_id is not None:
                 await user_input.send_keys(pixiv_id)
-            password_input = await tab.find('input[placeholder="Password"]')
+            password_input = await tab.select('input[placeholder="Password"]')
             if password is not None:
                 await password_input.send_keys(password)
             await asyncio.sleep(0.5)
@@ -51,15 +52,28 @@ async def __get_pixiv_cookies(
             
             progress.update(task, advance=1, description="Trying to login...")
 
-            while True:  # As long as no successful loggin in, continue this loop
-                try:
-                    await tab.find('div[id="__next"]', timeout=1)  # New version
-                    break
-                except:
+            if not headless:
+                while True:  # As long as no successful loggin in, continue this loop
                     try:
-                        await tab.find('div[id="root"]', timeout=1)  # Old version
+                        await tab.select('div[id="__next"]', timeout=1)  # New version
+                        break
                     except:
-                        continue
+                        try:
+                            await tab.select('div[id="root"]', timeout=1)  # Old version
+                        except:
+                            continue
+            else:  # In headless mode, waiting_seconds is used.
+                try:
+                    await tab.select('div[id="__next"]', timeout=waiting_seconds)  # New version
+                except Exception as e:
+                    log.error(f"Failed to log in to the new main page within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'}. Switching to the old version.\n{traceback.format_exc()}",
+                                output_msg=f"Failed to log in to the new main page within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'} because {e}. Switching to the old version.".replace('..', '.'))
+                    try:
+                        await tab.select('div[id="root"]', timeout=waiting_seconds)  # Old version
+                    except Exception as e:
+                        log.error(f"Failed to log in within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'}.\n{traceback.format_exc()}",
+                                    output_msg=f"Failed to log in within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'} because {e}")
+                        raise TimeoutError(f"failed to log in within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'}.")
 
             progress.update(task, advance=1, description="Parsing cookies...")
 
@@ -79,6 +93,7 @@ def get_pixiv_cookies(
     password: Optional[str]=None, 
     proxies: Optional[dict]=None, 
     headless: bool=False, 
+    waiting_seconds: float=60.0, 
     log: Log=Log(),
 ) -> Optional[Cookies]:
     """
@@ -89,6 +104,7 @@ def get_pixiv_cookies(
         password (str, optional): Your Pixiv password. Leave it to input manually.
         proxies (dict, optional): The proxies you use. Must be requests type.
         headless (bool, optional): Use headless mode. Default is False.
+        waiting_seconds (float, optional): In headless mode, if the next step cannot be loaded in waiting_seconds, then an error will be raised. Default is 60.
         log (crawler_utils.log.Log, optional): Logging config.
 
     Returns:
@@ -101,6 +117,7 @@ def get_pixiv_cookies(
             password=password,
             proxies=proxies,
             headless=headless,
+            waiting_seconds=waiting_seconds,
             log=log,
         )
     )

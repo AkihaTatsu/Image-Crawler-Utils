@@ -149,7 +149,7 @@ async def find_twitter_status(
 
     # Find status
     await tab  # Let the page be loaded
-    main_structure = await tab.find('div[data-testid="primaryColumn"]')
+    main_structure = await tab.select('div[data-testid="primaryColumn"]')
     status_elements = await main_structure.query_selector_all('article[data-testid="tweet"]')
     for element in status_elements:
         element_html = await element.get_html()
@@ -208,7 +208,9 @@ async def scrolling_to_find_status(
         while retry_count < crawler_settings.download_config.retry_times:
             try:
                 # Loading until progress bar (rotating circle) disappears
+                crawler_settings.log.debug(f'Awaiting loading icons to disappear in [repr.url]{tab_url}[reset] ...', extra={"markup": True})
                 await twitter_progress_bar_loading(tab)
+                crawler_settings.log.debug(f'Loading icons disappeared in [repr.url]{tab_url}[reset].', extra={"markup": True})
 
                 if not_from_retry_button:  # If the page is new, do some initialization
                     retry_count += 1
@@ -219,12 +221,14 @@ async def scrolling_to_find_status(
                     await tab.scroll_up(1000)  # Sometimes it does not load from the first tweet. Scroll to top in case of this!
                 
                 # Check if it is empty
+                crawler_settings.log.debug(f'Checking "empty" elements in [repr.url]{tab_url}[reset].', extra={"markup": True})
                 check = await twitter_empty_check(tab)
                 if check:
                     crawler_settings.log.warning(f'Page [repr.url]{tab_url}[reset] contains no result.', extra={"markup": True})
                     return [], 0  # Exit directly
                 
                 # Check if there is an error
+                crawler_settings.log.debug(f'Checking error elements in [repr.url]{tab_url}[reset].', extra={"markup": True})
                 check = await twitter_error_check(tab)
                 if check:
                     raise ConnectionRefusedError
@@ -240,9 +244,12 @@ async def scrolling_to_find_status(
                         crawler_settings.log.debug(f'Scrolled down {LOAD_SCROLL_LENGTH} at [repr.url]{tab_url}[reset]', extra={"markup": True})
 
                     # Loading until progress bar (rotating circle) disappears
+                    crawler_settings.log.debug(f'Awaiting loading icons to disappear in [repr.url]{tab_url}[reset] ...', extra={"markup": True})
                     await twitter_progress_bar_loading(tab)
+                    crawler_settings.log.debug(f'Loading icons disappeared in [repr.url]{tab_url}[reset].', extra={"markup": True})
                     
                     # Check if there is an error
+                    crawler_settings.log.debug(f'Checking error elements in [repr.url]{tab_url}[reset].', extra={"markup": True})
                     check = await twitter_error_check(tab)
                     if check:
                         raise ConnectionRefusedError
@@ -306,7 +313,7 @@ async def scrolling_to_find_status(
                 progress.update(task, description=f'Loading [repr.number]{reload_count + 1}[reset]/[repr.number]{reload_times}[reset], [repr.number]{len(attempt_status_list)}[reset] status & [repr.number]{media_count}[reset] {"images" if media_count > 1 else "image"} detected after scrolling times:')
                 
                 try:  # Try clicking the retry button
-                    main_structure = await tab.find('div[data-testid="primaryColumn"]')
+                    main_structure = await tab.select('div[data-testid="primaryColumn"]')
                     error_element = await main_structure.query_selector('button[class="css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-2yi16 r-1qi8awa r-3pj75a r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"]')
                     await error_element.click()
                     await tab.sleep()

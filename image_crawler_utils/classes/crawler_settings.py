@@ -268,7 +268,7 @@ class CrawlerSettings:
                 return False
             
             try:
-                tab = await browser.get(url, new_tab=True)
+                tab = await browser.get(url)
                 await tab.sleep()
                 self.log.info(f'Webpage is successfully loaded.')
                 if not headless:

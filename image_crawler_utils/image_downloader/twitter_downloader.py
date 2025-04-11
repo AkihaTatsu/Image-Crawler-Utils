@@ -43,8 +43,8 @@ async def __get_image_from_status(
 
         progress.update(task, advance=1, description="Requesting Twitter / X status once...")
 
-        tab = await browser.get(url, new_tab=True)
-        await tab.find('div[id="react-root"]')
+        tab = await browser.get(url)
+        await tab.select('div[id="react-root"]')
     except Exception as e:
         progress.finish_task(task)
         browser.stop()
@@ -69,10 +69,10 @@ async def __get_image_from_status(
     
     # Check if it is empty
     try:
-        await tab.find('article[data-testid="tweet"]', timeout=30)  # Try to get a tweet first
+        await tab.select('article[data-testid="tweet"]', timeout=30)  # Try to get a tweet first
     except:
         try:
-            main_structure = await tab.find('div[data-testid="primaryColumn"]')
+            main_structure = await tab.select('div[data-testid="primaryColumn"]')
         except Exception as e:
             progress.finish_task(task)
             raise ConnectionError(f"{e}")
@@ -85,7 +85,7 @@ async def __get_image_from_status(
                 raise FileExistsError("This Twitter / X page does not exist, or not accessible without an account.")
 
     # Check if the tweet itself is banned (comment tweets may exist)
-    main_structure = await tab.find('div[data-testid="primaryColumn"]')
+    main_structure = await tab.select('div[data-testid="primaryColumn"]')
     banned_element = None  # Twitter / X page banned
     try:
         banned_element = await main_structure.query_selector('a[href="https:\\/\\/help.twitter.com\\/rules-and-policies\\/notices-on-twitter"]')

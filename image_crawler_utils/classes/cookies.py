@@ -318,8 +318,8 @@ class Cookies:
             if len(new_nodriver_cookies[i].domain) == 0:
                 new_nodriver_cookies[i].domain = most_domain
         return new_nodriver_cookies
-        
     
+
     def is_none(self) -> bool:
         """
         Check whether Cookies is None.

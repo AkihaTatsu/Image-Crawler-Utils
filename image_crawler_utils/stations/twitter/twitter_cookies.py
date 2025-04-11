@@ -17,6 +17,7 @@ async def __get_twitter_cookies(
     password: Optional[str]=None, 
     proxies: Optional[dict]=None, 
     headless: bool=False, 
+    waiting_seconds: float=60.0, 
     log: Log=Log(),
 ) -> Cookies:
     if headless:
@@ -37,9 +38,9 @@ async def __get_twitter_cookies(
             
             progress.update(task, advance=1, description="Loading login page...")
 
-            tab = await browser.get("https://x.com/i/flow/login", new_tab=True)
+            tab = await browser.get("https://x.com/i/flow/login")
             if twitter_account is not None:  
-                user_input = await tab.find('input[autocomplete="username"]', timeout=30)
+                user_input = await tab.select('input[autocomplete="username"]', timeout=30)
                 await user_input.send_keys(twitter_account)
                 await asyncio.sleep(0.5)
                 await user_input.send_keys('\n')
@@ -48,7 +49,7 @@ async def __get_twitter_cookies(
 
             async def find_password_element(_tab: nodriver.Tab):
                 try:
-                    await _tab.find('input[autocomplete="current-password"]', timeout=1)
+                    await _tab.select('input[autocomplete="current-password"]', timeout=1)
                     return True
                 except:
                     return False
@@ -56,27 +57,35 @@ async def __get_twitter_cookies(
             while not await find_password_element(tab):
                 # Input user name (have problems in logging in account)
                 if user_id is not None:
-                    username_input = await tab.find('input')
+                    username_input = await tab.select('input')
                     await username_input.send_keys(user_id)
                     await asyncio.sleep(0.5)
                     await username_input.send_keys('\n')
             
             if password is not None:
                 # Input password
-                password_input = await tab.find('input[autocomplete="current-password"]')
+                password_input = await tab.select('input[autocomplete="current-password"]')
                 await password_input.send_keys(password)
                 await asyncio.sleep(0.5)
-                login_button = await tab.find('button[data-testid="LoginForm_Login_Button"]')
+                login_button = await tab.select('button[data-testid="LoginForm_Login_Button"]')
                 await login_button.click()
 
             progress.update(task, advance=1, description="Trying to login...")
 
-            while True:  # As long as no successful loggin in, continue this loop
+            if not headless:
+                while True:  # As long as no successful loggin in, continue this loop
+                    try:
+                        await tab.select('button[data-testid="SideNav_AccountSwitcher_Button"]', timeout=1)
+                        break
+                    except:
+                        continue
+            else:  # In headless mode, waiting_seconds is used.
                 try:
-                    await tab.find('button[data-testid="SideNav_AccountSwitcher_Button"]', timeout=1)
-                    break
-                except:
-                    continue
+                    await tab.select('button[data-testid="SideNav_AccountSwitcher_Button"]', timeout=waiting_seconds)
+                except Exception as e:
+                    log.error(f"Failed to log in within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'}.\n{traceback.format_exc()}",
+                                 output_msg=f"Failed to log in within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'} because {e}")
+                    raise TimeoutError(f"failed to log in within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'}.")
             
             progress.update(task, advance=1, description="Parsing cookies...")
 
@@ -87,7 +96,7 @@ async def __get_twitter_cookies(
 
             browser.stop()
         except Exception as e:
-            log.error(f"FAILED to parse cookies from Twitter / X.\n{traceback.format_exc()}", output_msg=f"FAILED to parse cookies from Twitter / X because {e}\n{traceback.format_exc()}")
+            log.error(f"FAILED to parse cookies from Twitter / X.\n{traceback.format_exc()}", output_msg=f"FAILED to parse cookies from Twitter / X because {e}.")
             cookies = None
     return cookies
 
@@ -99,6 +108,7 @@ def get_twitter_cookies(
     password: Optional[str]=None, 
     proxies: Optional[dict]=None, 
     headless: bool=False, 
+    waiting_seconds: float=60.0, 
     log: Log=Log(),
 ) -> Optional[Cookies]:
     """
@@ -110,6 +120,7 @@ def get_twitter_cookies(
         password (str, optional): Your Twitter / X password. Leave it to input manually.
         proxies (dict, optional): The proxies you use. Must be requests type.
         headless (bool, optional): Use headless mode. Default is False.
+        waiting_seconds (float, optional): In headless mode, if the next step cannot be loaded in waiting_seconds, then an error will be raised. Default is 60.
         log (crawler_utils.log.Log, optional): Logging config.
 
     Returns:
@@ -123,6 +134,7 @@ def get_twitter_cookies(
             password=password,
             proxies=proxies,
             headless=headless,
+            waiting_seconds=waiting_seconds,
             log=log,
         )
     )

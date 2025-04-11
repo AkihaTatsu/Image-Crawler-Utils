@@ -124,8 +124,8 @@ class TwitterKeywordMediaParser(KeywordParser):
 
                         progress.update(task, advance=1, description="Requesting searching result once...")
 
-                        tab = await browser.get(search_status_url, new_tab=True)
-                        await tab.find('div[id="react-root"]')
+                        tab = await browser.get(search_status_url)
+                        await tab.select('div[id="react-root"]')
                     except Exception as e:
                         browser.stop()
                         raise ConnectionError(f"{e}")

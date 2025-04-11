@@ -382,15 +382,15 @@ class Parser(ABC):
                 
                 progress.update(task, advance=1, description="Loading Cloudflare page and try passing it...")
 
-                tab = await browser.get(test_url, new_tab=True)
+                tab = await browser.get(test_url)
                 start_timestamp = datetime.datetime.now()
                 while (datetime.datetime.now() - start_timestamp).seconds < timeout:
                     try:
-                        await tab.find('div[class="main-content"]', timeout=3)
+                        await tab.select('div[class="main-content"]', timeout=3)
                     except:
                         break
                 try:
-                    await tab.find('div[class="main-content"]', timeout=1)
+                    await tab.select('div[class="main-content"]', timeout=1)
                     self.crawler_settings.log.error("Failed to pass Cloudflare verification.")
                     return
                 except:
