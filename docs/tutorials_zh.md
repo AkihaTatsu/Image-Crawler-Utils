@@ -438,7 +438,8 @@ from image_crawler_utils.stations.pixiv import get_pixiv_cookies
 cookies = get_pixiv_cookies(
     pixiv_id="mail@address",
     password="password",
-    proxies={"proxy_type": "proxy_address"},
+    proxies={"proxy_type": "proxy_address"}, 
+    timeout=30.0,
     headless=False, 
     waiting_seconds=60.0, 
 )
@@ -447,8 +448,9 @@ cookies = get_pixiv_cookies(
 + `pixiv_id`：账号的Pixiv ID或邮箱地址。留空以手动输入。
 + `password`：账号的密码。留空以手动输入。
 + `proxies`：打开登录界面的代理。使用的格式与[DownloadConfig](#downloadconfig)中的格式相同。
++ `timeout`：等待网页元素加载的时间（秒）。如果在`timeout`秒内元素未能加载，则记录错误并返回`None`。默认为30。
 + `headless`：一个`bool`类，决定是否使用无头模式（不显示窗口），默认为`False`。**强烈建议不要设置为`True`**，否则会无法通过可能的验证码或邮箱验证。
-+ `waiting_seconds`：在`headless=True`的情况下，如果在`waiting_seconds`秒内未能登录，则记录错误并返回`None`.
++ `waiting_seconds`：在`headless=True`的情况下，如果在`waiting_seconds`秒内未能登录，则记录错误并返回`None`。默认为60。
 
 `get_pixiv_cookies()`使用浏览器生成一个页面以完成登录。如果需要进行确认（如reCAPTCHA检查，邮件确认等），你必须手动完成此步骤。
 

@@ -16,6 +16,7 @@ async def __get_pixiv_cookies(
     pixiv_id: Optional[str]=None, 
     password: Optional[str]=None, 
     proxies: Optional[dict]=None, 
+    timeout: float=30.0, 
     headless: bool=False, 
     waiting_seconds: float=60.0, 
     log: Log=Log(),
@@ -39,10 +40,12 @@ async def __get_pixiv_cookies(
             progress.update(task, advance=1, description="Loading login page...")
 
             tab = await browser.get("https://accounts.pixiv.net/login?lang=en")
-            user_input = await tab.select('input[placeholder="E-mail address or pixiv ID"]', timeout=30)
+            await tab.sleep()
+
+            user_input = await tab.select('input[placeholder="E-mail address or pixiv ID"]', timeout=timeout)
             if pixiv_id is not None:
                 await user_input.send_keys(pixiv_id)
-            password_input = await tab.select('input[placeholder="Password"]')
+            password_input = await tab.select('input[placeholder="Password"]', timeout=timeout)
             if password is not None:
                 await password_input.send_keys(password)
             await asyncio.sleep(0.5)
@@ -92,6 +95,7 @@ def get_pixiv_cookies(
     pixiv_id: Optional[str]=None, 
     password: Optional[str]=None, 
     proxies: Optional[dict]=None, 
+    timeout: float=30.0, 
     headless: bool=False, 
     waiting_seconds: float=60.0, 
     log: Log=Log(),
@@ -103,6 +107,7 @@ def get_pixiv_cookies(
         pixiv_id (str, optional): Your Pixiv ID or mail address. Leave it to input manually.
         password (str, optional): Your Pixiv password. Leave it to input manually.
         proxies (dict, optional): The proxies you use. Must be requests type.
+        timeout (float, optional): Timeout (seconds) for waiting elements. Default is 30.
         headless (bool, optional): Use headless mode. Default is False.
         waiting_seconds (float, optional): In headless mode, if the next step cannot be loaded in waiting_seconds, then an error will be raised. Default is 60.
         log (crawler_utils.log.Log, optional): Logging config.
@@ -116,6 +121,7 @@ def get_pixiv_cookies(
             pixiv_id=pixiv_id,
             password=password,
             proxies=proxies,
+            timeout=timeout,
             headless=headless,
             waiting_seconds=waiting_seconds,
             log=log,

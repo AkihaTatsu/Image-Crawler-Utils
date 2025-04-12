@@ -1,16 +1,14 @@
 import dataclasses
-import re
 import datetime
 
 from typing import Optional, Union
-import traceback
 
 from urllib import parse
 import nodriver
 from concurrent import futures
 
 from image_crawler_utils import Cookies, Parser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.progress_bar import ProgressGroup
 from image_crawler_utils.utils import set_up_nodriver_browser
 
 from .search_settings import TwitterSearchSettings
