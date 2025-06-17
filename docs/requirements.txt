@@ -2,9 +2,9 @@ bs4
 dill
 lxml
 nodriver>=0.45.1
+pathvalidate
 Requests
 rich
-ua_generator
 Sphinx
 sphinx-autodoc-typehints
 sphinx-jinja2-compat
@@ -14,3 +14,4 @@ sphinx-rtd-theme
 sphinx-tabs
 sphinx-toolbox
 sphinx_collapse
+ua_generator
