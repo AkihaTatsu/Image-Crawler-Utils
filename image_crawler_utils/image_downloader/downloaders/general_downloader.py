@@ -6,9 +6,9 @@ from typing import Optional, Union
 from rich import markup
 
 from image_crawler_utils import Cookies
-from ...configs import DownloadConfig
-from ...log import Log
-from ...progress_bar import ProgressGroup
+from image_crawler_utils.configs import DownloadConfig
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import ProgressGroup
 
 from .core_downloader import download_image
 from .pixiv_downloader import pixiv_download_image_from_url

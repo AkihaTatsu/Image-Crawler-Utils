@@ -9,10 +9,10 @@ from typing import Optional, Union
 from collections.abc import Callable
 import traceback
 
-from ...configs import DownloadConfig
-from ...log import Log
-from ...progress_bar import CustomProgress, ProgressGroup
-from ...utils import check_dir, shorten_file_name
+from image_crawler_utils.configs import DownloadConfig
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import check_dir, shorten_file_name
 
 
 

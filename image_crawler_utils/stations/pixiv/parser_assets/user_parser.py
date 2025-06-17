@@ -6,8 +6,8 @@ from collections import ChainMap
 import requests
 import ua_generator
 
-from .... import Cookies, Parser, ImageInfo, CrawlerSettings
-from ....progress_bar import ProgressGroup
+from image_crawler_utils import Cookies, Parser, ImageInfo, CrawlerSettings
+from image_crawler_utils.progress_bar import ProgressGroup
 
 
 

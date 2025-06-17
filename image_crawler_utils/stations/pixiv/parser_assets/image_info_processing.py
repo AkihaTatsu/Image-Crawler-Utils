@@ -1,5 +1,5 @@
-from .... import ImageInfo
-from ....keyword import construct_keyword_tree
+from image_crawler_utils import ImageInfo
+from image_crawler_utils.keyword import construct_keyword_tree
 
 
 

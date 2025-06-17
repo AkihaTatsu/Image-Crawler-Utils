@@ -10,10 +10,10 @@ from typing import Optional
 import traceback
 
 from image_crawler_utils import Cookies, update_nodriver_browser_cookies
-from ...configs import DownloadConfig
-from ...log import Log
-from ...progress_bar import CustomProgress, ProgressGroup
-from ...utils import check_dir, set_up_nodriver_browser
+from image_crawler_utils.configs import DownloadConfig
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import check_dir, set_up_nodriver_browser
 
 from .core_downloader import download_image
 

@@ -4,9 +4,9 @@ import json
 from urllib import parse
 import requests
 
-from .... import Cookies, KeywordParser, ImageInfo, CrawlerSettings
-from ....keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
-from ....progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
+from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
 
 from .constants import GELBOORU_IMAGE_NUM_PER_JSON, MAX_GELBOORU_JSON_PAGE_NUM, SPECIAL_WEBSITES
 

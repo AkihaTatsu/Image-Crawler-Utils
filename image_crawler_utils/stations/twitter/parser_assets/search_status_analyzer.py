@@ -10,9 +10,9 @@ from bs4 import BeautifulSoup
 import nodriver
 import asyncio
 
-from .... import CrawlerSettings
-from ....log import Log
-from ....progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils import CrawlerSettings
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
 
 from .constants import SCROLL_DELAY, SCROLL_NUM, DOWN_SCROLL_LENGTH, LOAD_SCROLL_LENGTH
 from .status_classes import TwitterStatus, TwitterStatusMedia

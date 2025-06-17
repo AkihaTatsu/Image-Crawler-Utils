@@ -7,9 +7,9 @@ from urllib import parse
 import nodriver
 from concurrent import futures
 
-from .... import Cookies, Parser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
-from ....progress_bar import ProgressGroup
-from ....utils import set_up_nodriver_browser
+from image_crawler_utils import Cookies, Parser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
+from image_crawler_utils.progress_bar import ProgressGroup
+from image_crawler_utils.utils import set_up_nodriver_browser
 
 from .search_settings import TwitterSearchSettings
 from .search_status_analyzer import scrolling_to_find_status

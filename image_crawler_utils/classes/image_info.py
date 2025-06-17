@@ -4,9 +4,9 @@ import json, os, traceback
 from typing import Iterable, Optional
 from rich import markup
 
-from ..log import Log
-from ..progress_bar import CustomProgress
-from ..utils import check_dir
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress
+from image_crawler_utils.utils import check_dir
 
 
 

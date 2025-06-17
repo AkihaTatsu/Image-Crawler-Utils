@@ -16,11 +16,11 @@ from concurrent import futures
 
 import nodriver, asyncio
 
-from .. import Cookies, update_nodriver_browser_cookies
-from ..keyword import KeywordLogicTree, construct_keyword_tree
-from ..log import Log
-from ..progress_bar import CustomProgress, ProgressGroup
-from ..utils import check_dir, Empty, set_up_nodriver_browser
+from image_crawler_utils import Cookies, update_nodriver_browser_cookies
+from image_crawler_utils.keyword import KeywordLogicTree, construct_keyword_tree
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import check_dir, Empty, set_up_nodriver_browser
 
 from .crawler_settings import CrawlerSettings
 from .image_info import ImageInfo

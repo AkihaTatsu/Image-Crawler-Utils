@@ -10,8 +10,8 @@ from rich import markup
 
 import nodriver
 
-from ..log import Log
-from ..utils import check_dir
+from image_crawler_utils.log import Log
+from image_crawler_utils.utils import check_dir
 
 
 

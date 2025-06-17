@@ -5,10 +5,10 @@ import traceback
 from urllib import parse
 import nodriver
 
-from .... import Cookies, KeywordParser, CrawlerSettings, ImageInfo, update_nodriver_browser_cookies
-from ....keyword import KeywordLogicTree
-from ....progress_bar import CustomProgress, ProgressGroup
-from ....utils import set_up_nodriver_browser
+from image_crawler_utils import Cookies, KeywordParser, CrawlerSettings, ImageInfo, update_nodriver_browser_cookies
+from image_crawler_utils.keyword import KeywordLogicTree
+from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from image_crawler_utils.utils import set_up_nodriver_browser
 
 from .search_settings import TwitterSearchSettings
 from .search_status_analyzer import scrolling_to_find_status

@@ -2,7 +2,7 @@ import dataclasses
 from typing import Optional, Union
 import time
 
-from ....log import print_logging_msg
+from image_crawler_utils.log import print_logging_msg
 
 
 

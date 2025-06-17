@@ -9,11 +9,11 @@ import requests
 from rich import print, markup
 from rich.progress import SpinnerColumn
 
-from .. import Cookies, CrawlerSettings
-from ..image_downloader import download_image_from_url
-from ..progress_bar import ProgressGroup
-from ..utils import check_dir
-from ..log import Log
+from image_crawler_utils import Cookies, CrawlerSettings
+from image_crawler_utils.image_downloader import download_image_from_url
+from image_crawler_utils.progress_bar import ProgressGroup
+from image_crawler_utils.utils import check_dir
+from image_crawler_utils.log import Log
 
 from .image_info import ImageInfo
 

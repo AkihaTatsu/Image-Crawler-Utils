@@ -4,10 +4,10 @@ import traceback
 import nodriver
 import asyncio
 
-from .... import Cookies
-from ....log import Log
-from ....progress_bar import CustomProgress
-from ....utils import set_up_nodriver_browser
+from image_crawler_utils import Cookies
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress
+from image_crawler_utils.utils import set_up_nodriver_browser
 
 
 

@@ -12,10 +12,10 @@ from rich import print, markup
 import nodriver
 import asyncio
 
-from ..configs import DebugConfig, CapacityCountConfig, DownloadConfig
-from ..log import Log
-from ..progress_bar import CustomProgress
-from ..utils import check_dir, Empty, set_up_nodriver_browser
+from image_crawler_utils.configs import DebugConfig, CapacityCountConfig, DownloadConfig
+from image_crawler_utils.log import Log
+from image_crawler_utils.progress_bar import CustomProgress
+from image_crawler_utils.utils import check_dir, Empty, set_up_nodriver_browser
 
 
 
