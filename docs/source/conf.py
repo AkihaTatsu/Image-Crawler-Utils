@@ -52,7 +52,7 @@ sys.path.insert(0, os.path.abspath(os.path.join("..", "..", "image_crawler_utils
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['../build/html']
+html_static_path = [os.path.abspath('../../build/html')]
 html_context = {
     'display_github': True,
     'github_user': 'AkihaTatsu',

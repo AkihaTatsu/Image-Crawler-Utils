@@ -1,3 +1,10 @@
+bs4
+dill
+lxml
+nodriver>=0.45.1
+Requests
+rich
+ua_generator
 Sphinx
 sphinx-autodoc-typehints
 sphinx-jinja2-compat
