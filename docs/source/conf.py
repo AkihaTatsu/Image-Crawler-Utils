@@ -24,7 +24,6 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
-    'myst_parser',
     'sphinx_toolbox.collapse',
 ]
 
