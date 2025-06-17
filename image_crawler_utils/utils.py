@@ -12,7 +12,7 @@ import builtins
 
 import nodriver
 
-from image_crawler_utils.log import Log
+from .log import Log
 
 
 
@@ -31,6 +31,13 @@ class Empty:
 
 
 def attempt_name_len() -> int:
+    """
+    Try to calculate the length of names.
+
+    Returns:
+        The length of shortened file name. If terminal size is available, the result will be :math:`\\left\\lfloor\\frac{\\text{terminal_size} - 10}{5}\\right\\rfloor`. Otherwise, the result will be 10.
+    """
+
     try:
         return (os.get_terminal_size().columns - 10) // 5
     except:
@@ -44,9 +51,9 @@ def shorten_file_name(
     """
     Shorten file name for displaying on console.
 
-    Parameters:
+    Args:
         file_name (str): Name of the file.
-        name_len (int, optional): Maximum length allowed. Set to None (default) will use IMAGE_NAME_LEN above.
+        name_len (int, None): Maximum length allowed. Set to None (default) will use IMAGE_NAME_LEN above.
     
     Returns:
         Shortened file name.
@@ -63,12 +70,11 @@ def shorten_file_name(
 
 def check_dir(dir_path: str, log: Log=Log()) -> None:
     """
-    Create the directory when not existing.
-    Raise an error when failed.
+    This function will check whether a directory exists, and try to create it when not existing. A logging message will be print to console when succeeded, and a critical error will be thrown when failed.
 
-    Parameters:
+    Args:
         dir_path (str): Directory path.
-        log (crawler_utils.log.Log, optional): Logging config.
+        log (image_crawler_utils.log.Log, None): Logging config.
     """
 
     test_dir_path = dir_path.strip()
@@ -95,15 +101,22 @@ def save_dataclass(
         log: Log=Log(),
     ) -> Optional[tuple[str, str]]:
     """
-    Save a dataclass into a file.
-    ONLY WORKS IF the dataclass can be JSON serialized.
+    Save the ``dataclass`` parameter into a file.
 
-    Parameters:
+    Args:
         dataclass (A dataclass): The dataclass to be saved.
         file_name (str): Name of file. Suffix (.json / .pkl) is optional.
-        file_type (str, Optional): If suffix not found in `file_name`, designate file type manually.
-        encoding (str): Encoding of JSON file (if saved as .json).
-        log (crawler_utils.log.Log, optional): Logging config.
+        file_type (str, Optional): If suffix not found in ``file_name``, designate file type manually.
+
+            + Set ``file_type`` parameter to ``json`` or ``pkl`` will force the function to save the dataclass (config) into this type, or leaving this parameter blank will cause the funtion to determine the file type according to ``file_name``.
+
+                + That is, ``save_dataclass(dataclass, 'foo.json')`` works the same as ``save_dataclass(dataclass, 'foo', 'json')``.
+                + ``.json`` is suggested when your dataclasses (configs) do not include objects that cannot be JSON-serialized (e.g. a function), while serialized data file ``.pkl`` can support most data types but the saved file is not readable.
+
+        encoding (str): Encoding of JSON file. Only works when saving as ``.json``.
+        log (image_crawler_utils.log.Log, None): Logging config.
+
+            + You can use ``log=crawler_settings.log`` to make it the same as the CrawlerSettings you set up.
 
     Returns:
         (Saved file name, Absolute path of the saved file), or None if failed.
@@ -151,15 +164,21 @@ def load_dataclass(
         log: Log=Log(),
     ) -> Any:
     """
-    Load a the file into variable "dataclass_to_load".
+    Load the file containing a dataclass into the ``dataclass_to_load`` parameter.
+
     The dataclass should be the same as the one you once saved.
 
-    Parameters:
+    Args:
         dataclass (A dataclass): The dataclass to be loaded.
         file_name (str): Name of the file.
-        file_type (str, Optional): If suffix not found in `file_name`, designate file type manually.
-        encoding (str): Encoding of JSON file (if loaded from .json).
-        log (crawler_utils.log.Log, optional): Logging config.
+        file_type (str, Optional): If suffix not found in ``file_name``, designate file type manually.
+
+            + Set ``file_type`` parameter to ``json`` or ``pkl`` will force the function to consider the file as this type, or leaving this parameter blank will cause the funtion to determine file type according to ``file_name``.
+
+                + That is, ``load_dataclass(dataclass, 'foo.json')`` works the same as ``load_dataclass(dataclass, 'foo.json', 'json')``.
+
+        encoding (str): Encoding of JSON file. Only works when loading from ``.json``.
+        log (image_crawler_utils.log.Log, None): Logging config.
 
     Returns:
         Loaded dataclass_to_load, or None if failed.
@@ -208,15 +227,31 @@ async def set_up_nodriver_browser(
     no_image_stylesheet: bool=False,
 ) -> nodriver.Browser:
     """
-    Set up a nodriver.
+    Set up a nodriver in a more convenient way.
+
     WARNING: nodriver use async functions. This function is async as well!
 
-    Parameters:
-        proxies (dict, function; optional): The proxies used when settings up chromium.
-        headless (bool): Not to display window when running.
-        window_width (int, optional): Width of window when displayed. Set to None will maximize window.
-        window_height (int, optional): Height of window when displayed. Set to None will maximize window.
-        no_image_stylesheet (bool): Do not fetch images and stylesheet when loading webpages.
+    Args:
+        proxies (dict, Callable, None): The proxies used in nodriver browser.
+
+            + The pattern should be in a :py:mod:`requests`-acceptable form like:
+
+                + HTTP type: ``{'http': '127.0.0.1:7890'}``
+                + HTTPS type: ``{'https': '127.0.0.1:7890'}``, or ``{'https': '127.0.0.1:7890', 'http': '127.0.0.1:7890'}``
+                + SOCKS type: ``{'https': 'socks5://127.0.0.1:7890'}``
+
+        headless (bool): Do not display browsers window when a browser is started. Set to :py:data:`False` will pop up browser windows.
+        window_width (int, None): Width of browser window. Set to :py:data:`None` will maximize window.
+
+            + Set ``headless`` to :py:data:`True` will omit this parameter.
+
+        window_height (int, None): Height of window when displayed. Set to :py:data:`None` will maximize window.
+
+            + Set ``headless`` to :py:data:`True` will omit this parameter.
+
+        no_image_stylesheet (bool): Do not load any images or stylesheet when loading webpages in this browser.
+
+            + Set this parameter to ``True`` can reduce the traffic when loading pages and accelerate loading speed.
 
     Returns:
         The nodriver.
@@ -281,9 +316,12 @@ def suppress_print():
     """
     Suppress built-in print so that it may not output anything.
 
-    Use this function like:
-    >>> with suppress_print():
-    >>>     # suppressed print()
+    An example is like:
+
+    .. code-block:: python
+    
+        with suppress_print():
+            # suppressed print()
     """
 
     def silent_print(*args, **kwargs):

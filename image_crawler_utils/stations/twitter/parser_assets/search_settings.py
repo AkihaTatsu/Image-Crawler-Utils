@@ -2,46 +2,44 @@ import dataclasses
 from typing import Optional, Union
 import time
 
-from image_crawler_utils.log import print_logging_msg
+from ....log import print_logging_msg
 
 
 
 @dataclasses.dataclass
 class TwitterSearchSettings:
     """
-    Twitter / X search settings.
-
-    Parameters:
-        from_users (str or list, optional): A user / A list of users that sent these tweets.
-        to_users (str or list, optional): A user / A list of users that these tweets replied to.
-        mentionedd_users (str or list, optional): A user / A list of users mentioned in these tweets.
-        including_replies (bool): Including replies. Default set to True.
-        only_replies (bool): Showing only replies. Default set to False. "including_replies" must be True.
-        including_links (bool): Including links. Default set to True.
-        only_links (bool): Showing only links. Default set to False. "including_links" must be True.
-        including_media (bool): Including media. Default set to True.
-        only_media (bool): Showing only media. Default set to False. "including_media" must be True.
-        min_reply_num (int): Minimum reply number.
-        min_favorite_num (int): Minimum favorite number.
-        min_retweet_num (int): Minimum retweet number.
-        starting_date (str): Date which image was uploaded after. MUST be "YYYY-MM-DD", "YYYY.MM.DD" or "YYYY/MM/DD" format.
-        ending_date (str): Date which image was uploaded before. MUST be "YYYY-MM-DD", "YYYY.MM.DD" or "YYYY/MM/DD" format.
+    TwitterSearchSettings controls advanced searching settings. It will append an string to the keyword string according to the settings in this class.
     """
 
     from_users: Optional[Union[list[str], str]] = None
+    """Select tweets sent by a certain user / a certain list of users."""
     to_users: Optional[Union[list[str], str]] = None
+    """Select tweets replying to a certain user / a certain list of users."""
     mentioned_users: Optional[Union[list[str], str]] = None
+    """Select tweets that mention a certain user / a certain list of users."""
     including_replies: bool = True
+    """Including reply tweets."""
     only_replies: bool = False
+    """Only including reply tweets. Works only if ``including_replies`` is set to :py:data:`True` (default)."""
     including_links: bool = True
+    """Including tweets that contain at least one link."""
     only_links: bool = False
+    """Only including tweets that contain at least one link. Works only if ``including_replies`` is set to :py:data:`True` (default)."""
     including_media: bool = True
+    """Including tweets that contain at least one media."""
     only_media: bool = False
+    """Only including tweets that contain at least one media. Works only if ``including_replies`` is set to :py:data:`True` (default)."""
     min_reply_num: Optional[int] = None
+    """Including tweets with more than ``min_reply_num`` replies."""
     min_favorite_num: Optional[int] = None
+    """Including tweets with more than ``min_favorite_num`` favorites."""
     min_retweet_num: Optional[int] = None
+    """Including tweets with more than ``min_retweet_num`` retweets."""
     starting_date: str = ''
+    """Tweets after this date. Must be \"YYYY-MM-DD\", \"YYYY.MM.DD\" or \"YYYY/MM/DD\" format."""
     ending_date: str = ''
+    """Tweets before this date. Must be \"YYYY-MM-DD\", \"YYYY.MM.DD\" or \"YYYY/MM/DD\" format."""
 
 
     def __post_init__(self):
@@ -71,7 +69,7 @@ class TwitterSearchSettings:
         """
         Building a searching appending suffix.
 
-        Parameters:
+        Args:
             keyword_string (str): the constructed keyword string for Twitter.
         """
 

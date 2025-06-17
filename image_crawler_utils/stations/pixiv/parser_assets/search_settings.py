@@ -2,7 +2,7 @@ import dataclasses
 from typing import Optional
 import time
 
-from image_crawler_utils.log import print_logging_msg
+from ....log import print_logging_msg
 
 
 
@@ -10,44 +10,169 @@ from image_crawler_utils.log import print_logging_msg
 @dataclasses.dataclass
 class PixivSearchSettings:
     """
-    Pixiv search settings.
-
-    Parameters:
-        age_rating (str): MUST be selected from "all", "safe" and "r18".
-        order (str): Order of images. MUST be selected from "newest" and "oldest".
-        target_illust (bool): Whether include illustrations in results.
-        target_manga (bool): Whether include mangas in results.
-        target_ugoira (bool): Whether include ugoiras (animations) in results.
-        tags_match_type (str): Matching type of tags. MUST be selected from "partial", "perfect", "title_caption".
-        display_ai (bool): Whether to display AI-generated images.
-        width_lowest (int, optional): Lowest width of images. Default is None (no restrictions).
-        width_highest (int, optional): Highest width of images. Default is None (no restrictions).
-        height_lowest (int, optional): Lowest height of images. Default is None (no restrictions).
-        height_highest (int, optional): Highest height of images. Default is None (no restrictions).
-        ratio (float, optional): Ratio of images. Default is None (no restrictions).
-            - Set to 0 means select only square images.
-            - Set to positive means select horizontal images. For example, ratio=0.5 means selecting images with width / height >= 1 + 0.5 = 1.5
-            - Set to negative means select vertical images. For example, ratio=-0.5 means selecting images with height / width >= 1 + 0.5 = 1.5
-        creation_tool (str): Creation tool of images. Default is "all".
-        starting_date (str): Date which image was uploaded after. MUST be "YYYY-MM-DD", "YYYY.MM.DD" or "YYYY/MM/DD" format.
-        ending_date (str): Date which image was uploaded before. MUST be "YYYY-MM-DD", "YYYY.MM.DD" or "YYYY/MM/DD" format.
+    Search settings for Pixiv.
     """
 
     age_rating: str = "all"
+    """Age rating. MUST be selected from "all", "safe" and "r18"."""
     order: str = "newest"
+    """Order of images. MUST be selected from "newest" and "oldest"."""
     target_illust: bool = True
+    """Whether to include illustrations in results."""
     target_manga: bool = True
+    """Whether to include mangas in results."""
     target_ugoira: bool = True
+    """
+    Whether to include ugoiras (animations) in results.
+    
+        + Cannot set ``target_illust``, ``target_manga`` and ``target_ugoira`` to :py:data:`False` at the same time.
+        + Cannot set only one of ``target_illust`` and ``target_ugoira`` to :py:data:``False`` with the rest set to ``True`` at the same time.  
+    """
     tags_match_type: str = "partial"
+    """
+    Matching type of tags. MUST be selected from "partial", "perfect", "title_caption".
+
+        + "partial": Partially matched tags are accepted.
+        + "perfect": Tags must be perfectly matched.
+        + "title_caption": Searched keywords will be matched with titles and captions.
+    """
     display_ai: bool = True
+    """Whether to display AI-generated images."""
     width_lowest: Optional[int] = None
+    """Lowest width (in pixels) of images. Default is None (no restrictions)."""
     width_highest: Optional[int] = None
+    """Highest width (in pixels) of images. Default is None (no restrictions)."""
     height_lowest: Optional[int] = None
+    """Lowest height (in pixels) of images. Default is None (no restrictions)."""
     height_highest: Optional[int] = None
+    """Highest height (in pixels) of images. Default is None (no restrictions)."""
     ratio: Optional[float] = None
+    """
+    Ratio of images. Default is None (no restrictions).
+
+        + Set to 0 means select only square images.
+        + Set to positive means select horizontal images. For example, ratio=0.5 means selecting images with width / height >= 1 + 0.5 = 1.5
+        + Set to negative means select vertical images. For example, ratio=-0.5 means selecting images with height / width >= 1 + 0.5 = 1.5
+    """
     creation_tool: str = "all"
+    """
+    Creation tool of images. Default is "all".
+    
+    Can be one of these strings: 
+
+    .. collapse:: CLICK HERE TO DISPLAY
+
+        .. code-block::
+
+            'all'
+            'sai'
+            'photoshop'
+            'clip studio paint'
+            'illuststudio'
+            'comicstudio'
+            'pixia'
+            'azpainter2'
+            'painter'
+            'illustrator'
+            'gimp'
+            'firealpaca'
+            'oekaki bbs'
+            'azpainter'
+            'cgillust'
+            'oekaki chat'
+            'tegaki blog'
+            'ms_paint'
+            'pictbear'
+            'opencanvas'
+            'paintshoppro'
+            'edge'
+            'drawr'
+            'comicworks'
+            'azdrawing'
+            'sketchbookpro'
+            'photostudio'
+            'paintgraphic'
+            'medibang paint'
+            'nekopaint'
+            'inkscape'
+            'artrage'
+            'azdrawing2'
+            'fireworks'
+            'ibispaint'
+            'aftereffects'
+            'mdiapp'
+            'graphicsgale'
+            'krita'
+            'kokuban.in'
+            'retas studio'
+            'e-mote'
+            '4thpaint'
+            'comilabo'
+            'pixiv sketch'
+            'pixelmator'
+            'procreate'
+            'expression'
+            'picturepublisher'
+            'processing'
+            'live2d'
+            'dotpict'
+            'aseprite'
+            'pastela'
+            'poser'
+            'metasequoia'
+            'blender'
+            'shade'
+            '3dsmax'
+            'daz studio'
+            'zbrush'
+            'comi po!'
+            'maya'
+            'lightwave3d'
+            'hexagon king'
+            'vue'
+            'sketchup'
+            'cinema4d'
+            'xsi'
+            'carrara'
+            'bryce'
+            'strata'
+            'sculptris'
+            'modo'
+            'animationmaster'
+            'vistapro'
+            'sunny3d'
+            '3d-coat'
+            'paint 3d'
+            'vroid studio'
+            'mechanical pencil'
+            'pencil'
+            'ballpoint pen'
+            'thin marker'
+            'colored pencil'
+            'copic marker'
+            'dip pen'
+            'watercolors'
+            'brush'
+            'calligraphy pen'
+            'felt-tip pen'
+            'magic marker'
+            'watercolor brush'
+            'paint'
+            'acrylic paint'
+            'fountain pen'
+            'pastels'
+            'airbrush'
+            'color ink'
+            'crayon'
+            'oil paint'
+            'coupy pencil'
+            'gansai'
+            'pastel crayons'
+    """
     starting_date: str = ''
+    """Search images uploaded after this date. MUST be "YYYY-MM-DD", "YYYY.MM.DD" or "YYYY/MM/DD" format."""
     ending_date: str = ''
+    """Search images uploaded before this date. MUST be "YYYY-MM-DD", "YYYY.MM.DD" or "YYYY/MM/DD" format."""
 
 
     def __post_init__(self):
@@ -105,7 +230,7 @@ class PixivSearchSettings:
         """
         Building a searching appending suffix for website.
 
-        Parameters:
+        Args:
             keyword_string (str): the constructed keyword string for Pixiv.
         """
 
@@ -151,7 +276,7 @@ class PixivSearchSettings:
         """
         Building a searching appending suffix for ajax api.
         
-        Parameters:
+        Args:
             keyword_string (str): the constructed keyword string for Pixiv.
         """
 

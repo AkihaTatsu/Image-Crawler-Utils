@@ -5,9 +5,9 @@ import re, json
 from urllib import parse
 import requests
 
-from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
-from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from .... import Cookies, KeywordParser, ImageInfo, CrawlerSettings
+from ....keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
+from ....progress_bar import CustomProgress, ProgressGroup
 
 from .constants import GELBOORU_IMAGE_NUM_PER_GALLERY_PAGE, GELBOORU_IMAGE_NUM_PER_JSON, MAX_SAFEBOORU_JSON_PAGE_NUM, SPECIAL_WEBSITES
 
@@ -17,6 +17,41 @@ from .constants import GELBOORU_IMAGE_NUM_PER_GALLERY_PAGE, GELBOORU_IMAGE_NUM_P
 
 
 class SafebooruKeywordParser(KeywordParser):
+    """
+    Args:
+        crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
+         station_url (str): The URL of the main page of a website.
+
+            + This parameter works when several websites use the same structure. For example, https://yande.re/ and https://konachan.com/ both use Moebooru to build their websites, and this parameter must be filled to deal with these sites respectively.
+            + For websites like https://www.pixiv.net/, as no other website uses its structure, this parameter has already been initialized and do not need to be filled.
+
+        standard_keyword_string (str): Query keyword string using standard syntax. Refer to the documentation for detailed instructions.
+        cookies (image_crawler_utils.Cookies, list, dict, str, None): Cookies used in loading websites.
+
+            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`..
+                + :py:data:`None` means no cookies and works the same as ``Cookies()``.
+                + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
+
+        keyword_string (str, None): If you want to directly specify the keywords used in searching, set ``keyword_string`` to a custom non-empty string. It will OVERWRITE ``standard_keyword_string``.
+
+            + For example, set ``keyword_string`` to "kuon_(utawarerumono) rating:safe" in DanbooruKeywordParser means searching directly with this string in Danbooru, and its standard keyword string equivalent is "kuon_(utawarerumono) AND rating:safe".
+            + ``standard_keyword_string`` and ``keyword_string`` CANNOT be :py:data:`None` or empty (contains only spaces) at the same time. Otherwise, a critical error will happen!
+
+        replace_url_with_source_level (str, must be one of "All", "File", and "None"): A level controlling whether the Parser will try to download from the source URL of images instead of from the current website.
+
+            + It has 3 available levels, and default is "None":
+                + "All" or "all" (NOT SUGGESTED): As long as the image has a source URL, try to download from this URL first.
+                + "File" or "file": If the source URL looks like a file (e.g. https://foo.bar/image.png) or it is one of several special websites (e.g. Pixiv or Twitter / X status), try to download from this URL first.
+                + "None" or "none": Do not try to download from any source URL first.
+            + Both source URLs and Danbooru URLs are stored in ImageInfo class and will be used when downloading. This parameters only controls the priority of URLs.
+            + Set to a level other than "None" / "none" will reduce the pressure on Danbooru server but cost longer time (as source URLs may not be directly accessible, or they are absolutely unavailable).
+
+        use_keyword_include (bool): If this parameter is set to :py:data:`True`, KeywordParser will try to find keyword / tag subgroups with lowest number of keywords / tags (or subgroups with number of keywords / tags lower than a threshold, like 2 in Danbooru for those without an account) that contain all searching results with the least page number.
+
+            + Only works when ``standard_keyword_string`` is used. When ``keyword_string`` is specified, this parameter is omitted.
+            + For example, if the ``standard_keyword_string`` is set to "kuon_(utawarerumono) AND rating:safe OR utawarerumono", then the Parser will check "kuon_(utawarerumono) OR utawarerumono" and "rating:safe OR utawarerumono" and select the group with the least page number of results as the keyword string in later queries.
+            + If no subgroup with less than 2 keywords / tags exists (e.g. "kuon_(utawarerumono) OR rating:safe OR utawarerumono"), the Parser will try to find keyword / tag subgroups with the least keyword / tag number. This may often CAUSE ERRORS, so make a quick check of your keywords before setting this parameter to :py:data:`True`.
+    """
 
     def __init__(
         self, 
@@ -28,20 +63,6 @@ class SafebooruKeywordParser(KeywordParser):
         replace_url_with_source_level: str="None",
         use_keyword_include: bool=False,
     ):
-        """
-        Parameters:
-            crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings.
-            station_url (str): URL of the website.
-            standard_keyword_string (str): A keyword string using standard syntax.
-            cookies (Cookies, list, dict, str or None): Cookies used in loading websites.
-            keyword_string (str, optional): Specify the keyword string yourself. You can write functions to generate them from the keyword tree afterwards.
-            replace_url_with_source_level (str, must be one of "All", "File", and "None"):
-                - "All" means while the source of image exists, use the downloading URL with the one from source first.
-                - "File" means if the source of image is a file or some special websites, use the source downloading URL first.
-                - "None" means as long as the original URL exists, do not use source URL first.
-            use_keyword_include (bool): Using a new keyword string whose searching results can contain all images belong to the original keyword string result. Default set to False.
-                - Example: search "A" can contain all results by "A and B"
-        """
 
         super().__init__(
             station_url=station_url,
@@ -55,6 +76,9 @@ class SafebooruKeywordParser(KeywordParser):
 
 
     def run(self) -> list[ImageInfo]:
+        """
+        The main function that runs the Parser and returns a list of :class:`image_crawler_utils.ImageInfo`.
+        """
         with requests.Session() as session:
             if not self.cookies.is_none():
                 session.cookies.update(self.cookies.cookies_dict)

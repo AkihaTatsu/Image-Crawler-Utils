@@ -1,16 +1,16 @@
-from .image_info_processing import (
+from .parser_assets.image_info_processing import (
     filter_keyword_pixiv,
 )
-from .pixiv_cookies import (
+from .parser_assets.pixiv_cookies import (
     get_pixiv_cookies,
 )
-from .keyword_parser import (
+from .parser_assets.keyword_parser import (
     PixivKeywordParser, 
 )
-from .search_settings import (
+from .parser_assets.search_settings import (
     PixivSearchSettings,
 )
-from .user_parser import (
+from .parser_assets.user_parser import (
     PixivUserParser,
 )
 

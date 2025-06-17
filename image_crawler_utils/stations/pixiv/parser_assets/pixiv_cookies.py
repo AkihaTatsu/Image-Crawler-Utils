@@ -4,10 +4,10 @@ import traceback
 import nodriver
 import asyncio
 
-from image_crawler_utils import Cookies
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import CustomProgress
-from image_crawler_utils.utils import set_up_nodriver_browser
+from .... import Cookies
+from ....log import Log
+from ....progress_bar import CustomProgress
+from ....utils import set_up_nodriver_browser
 
 
 
@@ -40,7 +40,7 @@ async def __get_pixiv_cookies(
             progress.update(task, advance=1, description="Loading login page...")
 
             tab = await browser.get("https://accounts.pixiv.net/login?lang=en")
-            await tab.sleep()
+            await tab
 
             user_input = await tab.select('input[placeholder="E-mail address or pixiv ID"]', timeout=timeout)
             if pixiv_id is not None:
@@ -58,21 +58,28 @@ async def __get_pixiv_cookies(
             if not headless:
                 while True:  # As long as no successful loggin in, continue this loop
                     try:
-                        await tab.select('div[id="__next"]', timeout=1)  # New version
-                        break
+                        result = await tab.select('div[id="__next"]', timeout=1)  # New version
+                        if result is not None:
+                            break
                     except:
                         try:
-                            await tab.select('div[id="root"]', timeout=1)  # Old version
+                            result = await tab.select('div[id="root"]', timeout=1)  # Old version
+                            if result is not None:
+                                break
                         except:
                             continue
             else:  # In headless mode, waiting_seconds is used.
                 try:
-                    await tab.select('div[id="__next"]', timeout=waiting_seconds)  # New version
+                    result = await tab.select('div[id="__next"]', timeout=waiting_seconds)  # New version
+                    if result is None:
+                        raise ModuleNotFoundError('Element div[id="__next"] not found')
                 except Exception as e:
                     log.error(f"Failed to log in to the new main page within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'}. Switching to the old version.\n{traceback.format_exc()}",
                                 output_msg=f"Failed to log in to the new main page within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'} because {e}. Switching to the old version.".replace('..', '.'))
                     try:
-                        await tab.select('div[id="root"]', timeout=waiting_seconds)  # Old version
+                        result = await tab.select('div[id="root"]', timeout=waiting_seconds)  # Old version
+                        if result is None:
+                            raise ModuleNotFoundError('Element div[id="root"] not found')
                     except Exception as e:
                         log.error(f"Failed to log in within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'}.\n{traceback.format_exc()}",
                                     output_msg=f"Failed to log in within {waiting_seconds} {'seconds' if waiting_seconds > 1 else 'second'} because {e}")
@@ -81,7 +88,7 @@ async def __get_pixiv_cookies(
             progress.update(task, advance=1, description="Parsing cookies...")
 
             cookies_nodriver = await browser.cookies.get_all()
-            cookies = Cookies.create_by(cookies_nodriver)
+            cookies = Cookies(cookies_nodriver)
 
             browser.stop()
         except Exception as e:
@@ -103,17 +110,24 @@ def get_pixiv_cookies(
     """
     Manually get cookies by logging in to Pixiv.
     
-    Parameters:
-        pixiv_id (str, optional): Your Pixiv ID or mail address. Leave it to input manually.
-        password (str, optional): Your Pixiv password. Leave it to input manually.
-        proxies (dict, optional): The proxies you use. Must be requests type.
-        timeout (float, optional): Timeout (seconds) for waiting elements. Default is 30.
-        headless (bool, optional): Use headless mode. Default is False.
-        waiting_seconds (float, optional): In headless mode, if the next step cannot be loaded in waiting_seconds, then an error will be raised. Default is 60.
-        log (crawler_utils.log.Log, optional): Logging config.
+    Args:
+        pixiv_id (str, None): Your Pixiv ID or mail address. Leave it to input manually.
+        password (str, None): Your Pixiv password. Leave it to input manually.
+        proxies (dict, None): The proxies used in nodriver browser.
+
+            + The pattern should be in a :py:mod:`requests`-acceptable form like:
+
+                + HTTP type: ``{'http': '127.0.0.1:7890'}``
+                + HTTPS type: ``{'https': '127.0.0.1:7890'}``, or ``{'https': '127.0.0.1:7890', 'http': '127.0.0.1:7890'}``
+                + SOCKS type: ``{'https': 'socks5://127.0.0.1:7890'}``
+
+        timeout (float, None): Timeout (seconds) for waiting elements. Default is 30.
+        headless (bool, None): Use headless mode. Default is False.
+        waiting_seconds (float, None): In headless mode, if the next step cannot be loaded in waiting_seconds, then an error will be raised. Default is 60.
+        log (image_crawler_utils.log.Log, None): Logging config.
 
     Returns:
-        A crawler_utils.cookies.Cookies class.
+        A image_crawler_utils.Cookies class.
     """
 
     return nodriver.loop().run_until_complete(

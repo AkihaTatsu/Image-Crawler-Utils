@@ -4,9 +4,9 @@ import json, os, traceback
 from typing import Iterable, Optional
 from rich import markup
 
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import CustomProgress
-from image_crawler_utils.utils import check_dir
+from ..log import Log
+from ..progress_bar import CustomProgress
+from ..utils import check_dir
 
 
 
@@ -16,20 +16,25 @@ from image_crawler_utils.utils import check_dir
 @dataclasses.dataclass
 class ImageInfo:
     """
-    A pack of image url, name, info and filter.
+    A class consisting of image URL, name, info and back up URLs.
+    
     Can be used to download images and write result to files.
-
-    Parameters:
-        url (str): URL of the image.
-        name (str): Name of the image to be stored.
-        info (dict): The info of the image.
-        backup_urls (Iterable(str)): If the original url fails, use these urls instead.
     """
 
     url: str
+    """The URL used AT FIRST in downloading the image."""
     name: str
+    """Name of the image when saved."""
     info: dict = dataclasses.field(default_factory=lambda: {})  # Info should be a dict
+    """
+    A :py:class:`dict`, containing information of the image.
+
+        + ``info`` will not affect Downloader directly. It only works if you set the ``image_info_filter`` parameter in the Downloader class.
+        + Different sites may have different ``info`` structures which are defined respectively by their Parsers.
+        + **ATTENTION:** If you define you own ``info`` structure, please ENSURE it can be JSON-serialized (e.g. The values of the :py:class:`dict` should be ``int``, ``float``, :py:class:`str`, :py:class:`list`, :py:class:`dict`, etc.) in order to make it compatible with ``save_image_infos()`` and ``load_image_infos()``.
+    """
     backup_urls: Iterable[str] = dataclasses.field(default_factory=lambda: [])
+    """When downloading from ``.url`` failed, try downloading from URLs in the list of ``.backup_urls``."""
 
     
     # Remove invalid char
@@ -48,18 +53,19 @@ def save_image_infos(
     log: Log=Log(),
 ) -> Optional[tuple[str, str]]:
     """
-    Save the ImageInfo list into a json file.
+    Save the ImageInfo list into a JSON file.
+
     ONLY WORKS IF the info can be JSON serialized.
 
-    Parameters:
-        image_info_list (list of image_crawler_utils.ImageInfo): A list of ImageInfo.
-        json_file (str): Name / path of json file. Suffix (.json) is optional.
-        encoding (str): Encoding of JSON file.
-        display_progress (bool): Display a progress bar when running. Progress bar will be hidden after finishing.
-        log (crawler_utils.log.Log, optional): Logging config.
+    Args:
+        image_info_list (Iterable[image_crawler_utils.ImageInfo]): An iterable list (e.g. :py:class:`list` or :py:class:`tuple`) of :class:`image_crawler_utils.ImageInfo`.
+        json_file (str): Name / Path of the JSON file. Suffix (.json) is optional.
+        encoding (str): Encoding of the JSON file.
+        display_progress (bool): Display a ``rich`` progress bar when running. Progress bar will be hidden after finishing.
+        log (image_crawler_utils.log.Log, None): Logging config.
         
     Returns:
-        (Saved file name, Absolute path of the saved file), or None if failed.
+        (Saved file name, Absolute path of the saved file), or :py:data:`None` if failed.
     """
     
     try:
@@ -78,7 +84,7 @@ def save_image_infos(
                 path, filename = os.path.split(json_file)
                 check_dir(path, log)
                 f_name = os.path.join(path, f"{filename}.json")
-                f_name = f_name.replace(".json.json", ".json")  # If .json is already contained in json_file, skip it
+                f_name = f_name.replace(".json.json", ".json")  # If .JSON is already contained in json_file, skip it
                 with open(f_name, mode="wb") as f:
                     f.write(dict_list_data)
                 log.info(f'The list of ImageInfo has been saved at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
@@ -94,7 +100,7 @@ def save_image_infos(
             path, filename = os.path.split(json_file)
             check_dir(path, log)
             f_name = os.path.join(path, f"{filename}.json")
-            f_name = f_name.replace(".json.json", ".json")  # If .json is already contained in json_file, skip it
+            f_name = f_name.replace(".json.json", ".json")  # If .JSON is already contained in json_file, skip it
             with open(f_name, mode="wb") as f:
                 f.write(dict_list_data)
             log.info(f'The list of ImageInfo has been saved at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset]', extra={"markup": True})
@@ -112,14 +118,15 @@ def load_image_infos(
     log: Log=Log(),
 ) -> Optional[list[ImageInfo]]:
     """
-    Load the ImageInfo list from a json file.
+    Load the ImageInfo list from a JSON file.
+    
     ONLY WORKS IF the info can be JSON serialized.
 
-    Parameters:
-        json_file (str): Name / path of json file.
-        encoding (str): Encoding of JSON file.
-        display_progress (bool): Display a progress bar when running. Progress bar will be hidden after finishing.
-        log (crawler_utils.log.Log, optional): Logging config.
+    Args:
+        json_file (str): Name / Path of the JSON file.
+        encoding (str): Encoding of the JSON file.
+        display_progress (bool): Display a ``rich`` progress bar when running. Progress bar will be hidden after finishing.
+        log (image_crawler_utils.log.Log, None): Logging config.
 
     Returns:
         List of ImageInfo, or None if failed.

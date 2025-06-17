@@ -1,19 +1,19 @@
-from .image_info_processing import (
+from .parser_assets.image_info_processing import (
     filter_keyword_booru,
 )
-from .danbooru_keyword_parser import (
+from .parser_assets.danbooru_keyword_parser import (
     DanbooruKeywordParser,
 )
-from .moebooru_keyword_parser import (
+from .parser_assets.moebooru_keyword_parser import (
     MoebooruKeywordParser,
 )
-from .gelbooru_keyword_parser import (
+from .parser_assets.gelbooru_keyword_parser import (
     GelbooruKeywordParser,
 )
-from .safebooru_keyword_parser import (
+from .parser_assets.safebooru_keyword_parser import (
     SafebooruKeywordParser,
 )
-from .constants import (
+from .parser_assets.constants import (
     DANBOORU_IMAGE_NUM_PER_GALLERY_PAGE,
     DANBOORU_IMAGE_NUM_PER_JSON,
     KONACHAN_NET_IMAGE_NUM_PER_GALLERY_PAGE,

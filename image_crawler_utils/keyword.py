@@ -6,7 +6,7 @@ import unicodedata
 from typing import Optional, Union
 from collections.abc import Iterable
 
-from image_crawler_utils.log import Log
+from .log import Log
 
 
 
@@ -40,26 +40,20 @@ OPERATOR_PRIORITY = {
 class KeywordLogicTree:
     """
     A binary tree to record the logic structure of keywords.
-
-    Parameters:
-        lchild (str or KeywordLogicTree): Left child.
-        rchild (str or KeywordLogicTree): Right child.
-        logic_operator (str): Logic operator.
-    
-    Attributes:
-        simplify_tree(): Simplify the tree structure by cleaning "SINGLE" nodes and double "NOT" nodes.
-        is_leaf(): Whether current tree is a leaf node.
-        list_struct(): Return the structure of the tree in a list.
-        all_keywords(): Return all keywords in this tree in a list.
-        keyword_list_check(): Check whether current keyword list is valid.
-        keyword_include_group_list(): Return a list of keyword groups. The images with valid keywords are a subset of the images from the result of  searching all keywords in the keyword group connected by "OR".
     """
 
     lchild: Union[str, KeywordLogicTree] = ''
+    """Left child."""
     rchild: Union[str, KeywordLogicTree] = ''
-    # Logic operator, should only be in "AND", "OR", "NOT", "SINGLE"; when it is "NOT" or "SINGLE", lchild should be omiited
-    # "SINGLE" means this node has only one element rchild. After building a tree, use simplify_tree() to simplify these nodes.
+    """Right child."""
     logic_operator: str = "SINGLE"
+    """
+    Logic operator. Can be one of \"AND\", \"OR\", \"NOT\" or \"SINGLE\".
+    
+    When it is \"NOT\" or \"SINGLE\", lchild should be omiited.
+    
+    \"SINGLE\" means this node has only one element rchild. After building a tree, use simplify_tree() to simplify these nodes.
+    """
 
 
     def __post_init__(self):
@@ -75,6 +69,9 @@ class KeywordLogicTree:
     def is_empty(self) -> bool:
         """
         Check whether current KeywordLogicTree is empty.
+
+        Returns:
+            A boolean denoting whether current tree is empty.
         """
 
         if self.logic_operator == "SINGLE" and self.rchild == '':
@@ -89,7 +86,7 @@ class KeywordLogicTree:
         Whether current tree is a leaf node.
 
         Returns:
-            A boolean.
+            A boolean denoting whether current node is a leaf node.
         """
 
         if (self.logic_operator == "NOT" or self.logic_operator == "SINGLE") and isinstance(self.rchild, str):
@@ -103,7 +100,9 @@ class KeywordLogicTree:
     # Remove any "SINGLE" successor nodes except the current node, and simplify double negative structure
     def simplify_tree(self) -> None:
         """
-        Simplify the tree structure by cleaning "SINGLE" nodes and double "NOT" nodes.
+        Simplify the tree structure, including: NOT NOT key -> key and SINGLE key -> key.
+
+            + If you create a KeywordLogicTree through the functions provided, ``.simplify_tree()`` will be automatically executed.
         """
 
         if isinstance(self.lchild, KeywordLogicTree):
@@ -134,7 +133,9 @@ class KeywordLogicTree:
     # Return this tree as list structure
     def list_struct(self) -> list:
         """
-        Return the structure of the tree in a list.
+        Returns the structure of current tree as a recursive :py:class:`list`.
+
+            + For example, standard keyword string "A AND B OR C" will be returned as ``[['A', 'AND', 'B'], 'OR', 'C']``.
 
         Returns:
             A list with the structure of this keyword tree.
@@ -158,7 +159,10 @@ class KeywordLogicTree:
     # Return this tree as a standard keyword string
     def standard_keyword_string(self) -> str:
         """
-        Build a standard keyword string from a tree.
+        Returns the reconstructed standard keyword string.
+                    
+            + The result may not be the same as the string that is used to construct the KeywordLogicTree.
+            + For example, standard keyword string "A AND B OR C" will be returned as "[[A AND B] OR C]".
 
         Returns:
             A standard keyword string.
@@ -216,11 +220,13 @@ class KeywordLogicTree:
         """
         Check whether the keyword list matches this tree.
 
-        Parameters:
-            keyword_list (list of strings): The keyword list to check.
+            + For example, keyword list ``['A', 'B']``, ``['C', 'D']`` and ``['A', 'B', 'C']`` match "A AND B OR C", while keyword list ``['B', 'D']`` cannot match "A AND B OR C".
+
+        Args:
+            keyword_list (list[str]): The keyword list to check.
 
         Returns:
-            A boolean.
+            A boolean denoting if the keyword list matches this tree.
         """
 
         edited_keyword_list = [unicodedata.normalize("NFKC", keyword) for keyword in keyword_list]  # No full-width characters!
@@ -275,8 +281,17 @@ class KeywordLogicTree:
     # Output keyword groups that "CONTAIN" all possible results
     def keyword_include_group_list(self) -> list[list[str]]:
         """
-        Return a list of keyword groups. The images with valid keywords are a subset of the images from the result of searching all keywords in the keyword group connected by "OR".
-        Example: for "A AND [B OR C]", search "A" or "B OR C" can contain all possible results.
+        Returns a list of keyword groups (list of keywords) which are minimal supersets of current tree.
+
+            + For example:
+
+                + For "A AND B OR C", its minimal supersets are ``['A', 'C']`` and ``['B', 'C']``.
+
+                    + That is, if you search "A OR C" or "B OR C", you can get all results that match "A AND B OR C". 
+
+                + For "A AND [B OR C]", its minimal supersets are ``['A']`` and ``['B', 'C']``.
+
+            + Useful for websites that have a restriction on the number of keywords when seaching.
 
         Returns:
             A list of keyword groups (i.e. lists of keywords).
@@ -469,13 +484,16 @@ def construct_keyword_tree(
     """
     Use a standard syntax to represent logic relationship of keywords.
     Use ' AND ' / '&', ' OR ' / '|', ' NOT ' / '!' to represent logic operators.
-    Use '[', ']' to increase logic priority.
-    Any space between two keywords will be replaced with '_' and consider them as one keyword.
-    Example: A B & [C (extra) OR NOT D] -> A_B AND [C_(extra) OR NOT D]
 
-    Parameters:
+    Use '[', ']' to increase logic priority.
+
+    + Any space between two keywords will be replaced with '_' and thus be considered as one keyword.
+
+        + Example: "A B & [C (extra) OR NOT D]" -> "A_B AND [C_(extra) OR NOT D]"
+
+    Args:
         keyword_str (str): A string of keywords.
-        log (crawler_utils.log.Log, optional): The logging config.
+        log (image_crawler_utils.log.Log, None): The logging config.
 
     Returns:
         If successful, returns a KeywordLogicTree.
@@ -496,12 +514,13 @@ def construct_keyword_tree_from_list(
 ) -> KeywordLogicTree:
     """
     Convert a list of keywords into a keyword tree connected by connect_symbol (default is "OR").
-    e.g. ['A', 'B', 'C'] -> [['A' OR 'B'] OR 'C']
 
-    Parameters:
+    e.g. ``['A', 'B', 'C']`` -> ``[['A' OR 'B'] OR 'C']``
+
+    Args:
         keyword_str (Iterable(str)): A list of strings.
         connect_symbol (str): Logic symbol of connection. Must be one of 'AND', 'OR', '&' or '|'.
-        log (crawler_utils.log.Log, optional): The logging config.
+        log (image_crawler_utils.log.Log, None): The logging config.
 
     Returns:
         If successful, returns a KeywordLogicTree.
@@ -526,10 +545,10 @@ def min_len_keyword_group(
     below: Optional[int]=None,
 ) -> list[list]:
     """
-    For a list of keyword groups (i.e. lists of keywords), get a list of keyword group with the smallest length, or all keyword groups whose length are no larger than `below`.
+    For a list of keyword groups (i.e. lists of keywords), get a list of keyword group with the smallest length, or all keyword groups whose length are no larger than ``below``.
     
-    Parameters:
-        keyword_group_list (list of list of string): A list of keyword groups.
+    Args:
+        keyword_group_list (list[list[str]]): A list of keyword groups.
         below (int): If not None, try return all keyword group with length below "below" parameter. If such groups don't exist, return the one with the smallest length.
 
     Returns:

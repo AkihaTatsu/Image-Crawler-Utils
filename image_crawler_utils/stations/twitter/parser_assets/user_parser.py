@@ -7,9 +7,9 @@ from urllib import parse
 import nodriver
 from concurrent import futures
 
-from image_crawler_utils import Cookies, Parser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
-from image_crawler_utils.progress_bar import ProgressGroup
-from image_crawler_utils.utils import set_up_nodriver_browser
+from .... import Cookies, Parser, ImageInfo, CrawlerSettings, update_nodriver_browser_cookies
+from ....progress_bar import ProgressGroup
+from ....utils import set_up_nodriver_browser
 
 from .search_settings import TwitterSearchSettings
 from .search_status_analyzer import scrolling_to_find_status
@@ -37,11 +37,15 @@ class TwitterUserMediaParser(Parser):
         headless: bool=True,
     ):
         """
-        Parameters:
-            crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings.
+        Args:
+            crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
             user_id: Twitter / X ID of a user.
-            station_url (str): URL of the website.
-            cookies (crawler_utils.cookies.Cookies, str, dict or list, optional): Cookies containing logging information.
+            station_url (str): The URL of the main page of a website.
+
+            + This parameter works when several websites use the same structure. For example, https://yande.re/ and https://konachan.com/ both use Moebooru to build their websites, and this parameter must be filled to deal with these sites respectively.
+            + For websites like https://www.pixiv.net/, as no other website uses its structure, this parameter has already been initialized and do not need to be filled.
+
+            cookies (image_crawler_utils.Cookies, str, dict, list, None): Cookies containing logging information.
             reload_times (int): Time of reloading page in case some status are omitted.
             error_retry_delay (float): Pause error_retry_delay seconds if an error happened.
             interval_days (int): Interval of days for each searching result page.
@@ -67,6 +71,9 @@ class TwitterUserMediaParser(Parser):
 
    
     def run(self) -> list[ImageInfo]:
+        """
+        The main function that runs the Parser and returns a list of :class:`image_crawler_utils.ImageInfo`.
+        """
         if self.cookies.is_none():
             raise ValueError('Cookies cannot be empty!')
         self.generate_search_settings()

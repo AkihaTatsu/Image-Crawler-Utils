@@ -43,7 +43,7 @@ import atexit
 from rich import markup
 from nodriver.core.util import deconstruct_browser, __registered__instances__
 
-from image_crawler_utils.log import Log
+from .log import Log
 
 
 # Some atexit-related function
@@ -52,7 +52,7 @@ def silent_deconstruct_browser(log: Log=Log()):
     I have had enough with nodriver's annoying removing temp file messages.
     This function will do the same thing without those spamming messages.
 
-    Parameters:
+    Args:
         log (image_crawler_utils.log.Log): Displaying those spamming messages.
     """
 

@@ -9,10 +9,10 @@ from typing import Optional, Union
 from collections.abc import Callable
 import traceback
 
-from image_crawler_utils.configs import DownloadConfig
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
-from image_crawler_utils.utils import check_dir, shorten_file_name
+from ...configs import DownloadConfig
+from ...log import Log
+from ...progress_bar import CustomProgress, ProgressGroup
+from ...utils import check_dir, shorten_file_name
 
 
 
@@ -29,14 +29,14 @@ def download_image(
     thread_id: int=0,
 ) -> tuple[bool, int]:
     """
-    Download image from url.
+    Core downloader for downloading image from url.
 
-    Parameters:
+    Args:
         url (str): The URL of the image to download.
         image_name (str): Name of image to be stored.
         download_config (image_crawler_utils.configs.DownloadConfig): Comprehensive download config.
-        headers (dict, function or None): Custom headers that will overwrite the ones in download_config.
-        proxies (dict, function or None): Custom proxies that will overwrite the ones in download_config.
+        headers (dict, callable, None): Custom headers that will overwrite the ones in download_config.
+        proxies (dict, callable, None): Custom proxies that will overwrite the ones in download_config.
         log (config.Log): The logger.
         store_path (str): Path of image to be stored.
         session (requests.Session): A session that may contain cookies.
@@ -44,7 +44,7 @@ def download_image(
         thread_id (int): Nth thread of image downloading.
 
     Returns:
-        (bool, int): (bool denoting whether succeeded, the size of the downloaded image in Bytes)
+        (bool, int): (bool denoting whether succeeded, the size of the downloaded image in bytes)
     """
 
     # Start downloading

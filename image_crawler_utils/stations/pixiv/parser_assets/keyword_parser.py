@@ -5,13 +5,13 @@ import json
 from collections import ChainMap
 from collections.abc import Callable
 import requests
+import ua_generator
 
 from urllib import parse
 
-from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
-from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
-from image_crawler_utils.user_agent import UserAgent
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from .... import Cookies, KeywordParser, ImageInfo, CrawlerSettings
+from ....keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
+from ....progress_bar import CustomProgress, ProgressGroup
 
 from .search_settings import PixivSearchSettings
 
@@ -21,6 +21,39 @@ from .search_settings import PixivSearchSettings
 
 
 class PixivKeywordParser(KeywordParser):
+    """
+    Args:
+        crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
+        station_url (str): The URL of the main page of a website.
+
+            + This parameter works when several websites use the same structure. For example, https://yande.re/ and https://konachan.com/ both use Moebooru to build their websites, and this parameter must be filled to deal with these sites respectively.
+            + For websites like https://www.pixiv.net/, as no other website uses its structure, this parameter has already been initialized and do not need to be filled.
+
+        standard_keyword_string (str): Query keyword string using standard syntax. Refer to the documentation for detailed instructions.
+        pixiv_search_settings (image_crawler_utils.stations.pixiv.PixivSearchSettings): A PixivSearchSettings class that contains extra options when searching.
+        keyword_string (str, None): If you want to directly specify the keywords used in searching, set ``keyword_string`` to a custom non-empty string. It will OVERWRITE ``standard_keyword_string``.
+
+            + For example, set ``keyword_string`` to ``"kuon_(utawarerumono) rating:safe"`` in DanbooruKeywordParser means searching directly with this string in Danbooru, and its standard keyword string equivalent is ``"kuon_(utawarerumono) AND rating:safe"``.
+
+        use_keyword_include (bool): Using a new keyword string whose searching results can contain all images belong to the original keyword string result. Default set to False.
+
+            + Example: search "A" can contain all results by "A and B"
+
+        cookies (image_crawler_utils.Cookies, str, dict, list, None): Cookies containing logging information.
+        thread_delay (float, Callable, None): As Pixiv restricts number of requests in a certain period, this argument defines the delay time (seconds) before every downloading thread of websites.
+        quick_mode (bool): Only collect the basic information.
+
+            + Pixiv has a strict anti-crawling restriction on acquiring the pages containing information of images. Set this parameter to :py:data:`True` will not request these pages and collect only the basic information of images for downloading.
+            + Different Parsers may have different structures of image information. Refer to the [ImageInfo Structure](#imageinfo-structure-4) chapter for the difference between results.
+                + If set to :py:data:`False` (get full information), then the ``thread_delay`` when downloading information pages will be forced to be set to no lower than ``CrawlerSettings.download_config.thread_num * 1.0``. Other pages are not affected.
+
+        info_page_batch_num (int): After downloading ``info_page_batch_num`` number of image information pages, the crawler will wait for ``info_page_batch_delay`` seconds before continue.
+        info_page_batch_delay (float, None): After downloading ``info_page_batch_num`` number of image information pages, the crawler will wait for `info_page_batch_delay` seconds before continue.
+
+            + If ``quick_mode`` is set to :py:data:`True`, both ``info_page_batch_num`` and ``info_page_batch_delay`` will be ignored.
+            + If you are not sure, leaving both ``info_page_batch_num`` and ``info_page_batch_delay`` blank (use their default values) is likely enough for preventing your account to be suspended.
+            + ``info_page_batch_delay`` can be a function that will be called for every usage.
+    """
 
     def __init__(
         self, 
@@ -34,24 +67,7 @@ class PixivKeywordParser(KeywordParser):
         quick_mode: bool=False,
         info_page_batch_num: Optional[int]=100,
         info_page_batch_delay: Union[float, Callable]=300,
-        headless: bool=True,
     ):
-        """
-        Parameters:
-            crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings.
-            station_url (str): URL of the website.
-            standard_keyword_string (str): A keyword string using standard syntax.
-            pixiv_search_settings (crawler_utils.stations.pixiv.PixivSearchSettings): Settings for Pixiv searching.
-            keyword_string (str, optional): Specify the keyword string yourself. You can write functions to generate them from the keyword tree afterwards.
-            use_keyword_include (bool): Using a new keyword string whose searching results can contain all images belong to the original keyword string result. Default set to False.
-                - Example: search "A" can contain all results by "A and B"
-            cookies (crawler_utils.cookies.Cookies, str, dict or list, optional): Cookies containing logging information.
-            thread_delay (float or function, optional): As Pixiv restricts number of requests in a certain period, this argument defines the delay time (seconds) before every downloading thread of websites.
-            quick_mode (bool): DO NOT DOWNLOAD any image info. Will increase speed of downloading.
-            info_page_batch_num (int): Batch size of images. Finish downloading a batch will wait for a rather long time.
-            info_page_batch_delay (float, optional): Delay time after each batch of images is downloaded.
-            headless (bool): Hide browser window when browser is loaded.
-        """
 
         super().__init__(
             station_url=station_url,
@@ -65,10 +81,12 @@ class PixivKeywordParser(KeywordParser):
         self.quick_mode = quick_mode
         self.info_page_batch_num = info_page_batch_num
         self.info_page_batch_delay = info_page_batch_delay
-        self.headless = headless
 
 
     def run(self) -> list[ImageInfo]:
+        """
+        The main function that runs the Parser and returns a list of :class:`image_crawler_utils.ImageInfo`.
+        """
         if self.keyword_string is None:
             if self.use_keyword_include:
                 self.generate_keyword_string_include()
@@ -157,7 +175,9 @@ class PixivKeywordParser(KeywordParser):
             session.cookies.update(self.cookies.cookies_dict)
 
         if self.crawler_settings.download_config.result_headers is None:  # Pixiv must have user-agents!
-            json_search_page_headers = dict(ChainMap(UserAgent.random_agent_with_name("Chrome"), {"Referer": "www.pixiv.net"}))
+            ua = ua_generator.generate(browser=('chrome', 'edge'))
+            ua.headers.accept_ch('Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List')
+            json_search_page_headers = dict(ChainMap(ua.headers.get(), {"Referer": "www.pixiv.net"}))
         else:
             json_search_page_headers = dict(ChainMap(self.crawler_settings.download_config.result_headers, {"Referer": "www.pixiv.net"}))
 
@@ -202,11 +222,6 @@ class PixivKeywordParser(KeywordParser):
             session.cookies.update(self.cookies.cookies_dict)
 
         self.crawler_settings.log.info("Downloading pages including Pixiv IDs...")
-        # Update headers for json download
-        if self.crawler_settings.download_config.result_headers is None:  # Pixiv must have user-agents!
-            json_search_page_headers = dict(ChainMap(UserAgent.random_agent_with_name("Chrome"), {"Referer": "www.pixiv.net"}))
-        else:
-            json_search_page_headers = dict(ChainMap(self.crawler_settings.download_config.result_headers, {"Referer": "www.pixiv.net"}))
 
         # Get pages until all pages are fetched
         empty_urls = self.json_page_urls.copy()
@@ -217,11 +232,10 @@ class PixivKeywordParser(KeywordParser):
             empty_urls = []
 
             # Get and parse json page info
-            json_page_contents = self.threading_request_page_content(
+            json_page_contents = self.nodriver_threading_request_page_content(
                 download_urls, 
-                restriction_num=self.crawler_settings.capacity_count_config.page_num, 
-                session=session,
-                headers=json_search_page_headers,
+                restriction_num=self.crawler_settings.capacity_count_config.image_num, 
+                is_json=True,
                 # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
             )
 
@@ -255,7 +269,9 @@ class PixivKeywordParser(KeywordParser):
             
         # Update headers for illust detection
         if self.crawler_settings.download_config.result_headers is None:  # Pixiv must have user-agents!
-            json_image_url_page_headers = [dict(ChainMap(UserAgent.random_agent_with_name("Chrome"), {"Referer": f"www.pixiv.net/artworks/{artwork_id}"}))
+            ua = ua_generator.generate(browser=('chrome', 'edge'))
+            ua.headers.accept_ch('Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List')
+            json_image_url_page_headers = [dict(ChainMap(ua.headers.get(), {"Referer": f"www.pixiv.net/artworks/{artwork_id}"}))
                                            for artwork_id in self.json_basic_info.keys()]
         else:
             json_image_url_page_headers = [dict(ChainMap(self.crawler_settings.download_config.result_headers, {"Referer": f"www.pixiv.net/artworks/{artwork_id}"}))
@@ -270,7 +286,7 @@ class PixivKeywordParser(KeywordParser):
             restriction_num=self.crawler_settings.capacity_count_config.image_num, 
             session=session,
             headers=json_image_url_page_headers,
-            thread_delay=1.0 * self.crawler_settings.download_config.thread_num,  # Manually set thread_delay in case account get suspended because of too many requests
+            thread_delay=max(1.0 * self.crawler_settings.download_config.thread_num, self.crawler_settings.download_config.result_thread_delay),  # Force not to be lower than a certain threshold in case the account get suspended because of too many requests
             batch_num=self.info_page_batch_num,
             batch_delay=self.info_page_batch_delay,
         )
@@ -285,11 +301,10 @@ class PixivKeywordParser(KeywordParser):
         self.crawler_settings.log.info("Downloading image URLs for every Pixiv ID...")
         json_image_download_urls = [f'{self.station_url}ajax/illust/{artwork_id}/pages'
                                     for artwork_id in self.json_basic_info.keys()]
-        json_image_url_page_contents = self.threading_request_page_content(
+        json_image_url_page_contents = self.nodriver_threading_request_page_content(
             json_image_download_urls, 
             restriction_num=self.crawler_settings.capacity_count_config.image_num, 
-            session=session,
-            headers=json_image_url_page_headers,
+            is_json=True,
             # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
         )
         
@@ -330,23 +345,14 @@ class PixivKeywordParser(KeywordParser):
             session = requests.Session()
             session.cookies.update(self.cookies.cookies_dict)
             
-        # Update headers for illust detection
-        if self.crawler_settings.download_config.result_headers is None:  # Pixiv must have user-agents!
-            json_image_url_page_headers = [dict(ChainMap(UserAgent.random_agent_with_name("Chrome"), {"Referer": f"www.pixiv.net/artworks/{artwork_id}"}))
-                                           for artwork_id in self.json_basic_info.keys()]
-        else:
-            json_image_url_page_headers = [dict(ChainMap(self.crawler_settings.download_config.result_headers, {"Referer": f"www.pixiv.net/artworks/{artwork_id}"}))
-                                           for artwork_id in self.json_basic_info.keys()]
-            
         # Get and parse json page info 
         self.crawler_settings.log.info("Downloading image URLs for every Pixiv ID...")
         json_image_download_urls = [f'{self.station_url}ajax/illust/{artwork_id}/pages'
                                     for artwork_id in self.json_basic_info.keys()]
-        json_image_url_page_contents = self.threading_request_page_content(
+        json_image_url_page_contents = self.nodriver_threading_request_page_content(
             json_image_download_urls, 
             restriction_num=self.crawler_settings.capacity_count_config.image_num, 
-            session=session,
-            headers=json_image_url_page_headers,
+            is_json=True,
             # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
         )
 

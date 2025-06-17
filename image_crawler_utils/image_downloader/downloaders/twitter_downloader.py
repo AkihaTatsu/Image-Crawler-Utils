@@ -10,10 +10,10 @@ from typing import Optional
 import traceback
 
 from image_crawler_utils import Cookies, update_nodriver_browser_cookies
-from image_crawler_utils.configs import DownloadConfig
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
-from image_crawler_utils.utils import check_dir, set_up_nodriver_browser
+from ...configs import DownloadConfig
+from ...log import Log
+from ...progress_bar import CustomProgress, ProgressGroup
+from ...utils import check_dir, set_up_nodriver_browser
 
 from .core_downloader import download_image
 
@@ -44,14 +44,16 @@ async def __get_image_from_status(
         progress.update(task, advance=1, description="Requesting Twitter / X status once...")
 
         tab = await browser.get(url)
-        await tab.select('div[id="react-root"]')
+        result = await tab.select('div[id="react-root"]')
+        if result is None:
+            raise ModuleNotFoundError('Element div[id="react-root"] not found')
     except Exception as e:
         progress.finish_task(task)
         browser.stop()
         raise ConnectionError(f"{e}")
     
     # Replace cookies
-    cookies = Cookies.create_by(session.cookies.get_dict())
+    cookies = Cookies(session.cookies.get_dict())
     await update_nodriver_browser_cookies(browser, cookies)
 
     # Connect twice to get images
@@ -60,7 +62,7 @@ async def __get_image_from_status(
 
         await tab.get(url)
         await tab.scroll_up(1000)  # Sometimes it does not load from the first tweet. Scroll to top in case of this!
-        await tab.sleep()  # Wait until the whole page is fully loaded!
+        await tab  # Wait until the whole page is fully loaded!
         # Get main structure
     except Exception as e:
         progress.finish_task(task)
@@ -69,7 +71,9 @@ async def __get_image_from_status(
     
     # Check if it is empty
     try:
-        await tab.select('article[data-testid="tweet"]', timeout=30)  # Try to get a tweet first
+        result = await tab.select('article[data-testid="tweet"]', timeout=30)  # Try to get a tweet first
+        if result is None:
+            raise ModuleNotFoundError('Element article[data-testid="tweet"] not found')
     except:
         try:
             main_structure = await tab.select('div[data-testid="primaryColumn"]')
@@ -203,9 +207,9 @@ def twitter_download_image_from_status(
     thread_id: int=0,
 ) -> tuple[float, int]:
     """
-    Download image from url
+    Download image from Twitter status URL.
 
-    Parameters:
+    Args:
         url (str): The URL of the image to download.
         image_name (str): Name of image to be stored.
         download_config (image_crawler_utils.configs.DownloadConfig): Comprehensive download config.
@@ -216,7 +220,7 @@ def twitter_download_image_from_status(
         thread_id (int): Nth thread of image downloading.
 
     Returns:
-        (float, int): (the size of the downloaded image in Bytes, thread_id)
+        (float, int): (the size of the downloaded image in bytes, thread_id)
     """
 
     return nodriver.loop().run_until_complete(

@@ -1,6 +1,7 @@
 import os, re, json
 import time
 import random
+import ua_generator
 
 import requests
 from rich import markup
@@ -8,10 +9,9 @@ from rich import markup
 from typing import Optional
 import traceback
 
-from image_crawler_utils.configs import DownloadConfig
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import ProgressGroup
-from image_crawler_utils.user_agent import UserAgent
+from ...configs import DownloadConfig
+from ...log import Log
+from ...progress_bar import ProgressGroup
 
 from .core_downloader import download_image
 
@@ -28,9 +28,9 @@ def pixiv_download_image_from_url(
     thread_id: int=0,
 ) -> tuple[float, int]:
     """
-    Download image from url
+    Download Pixiv image from url. Supports both direct Pixiv picture URL and artwork ID URL.
 
-    Parameters:
+    Args:
         url (str): The URL of the image to download.
         image_name (str): Name of image to be stored.
         download_config (image_crawler_utils.configs.DownloadConfig): Comprehensive download config.
@@ -41,7 +41,7 @@ def pixiv_download_image_from_url(
         thread_id (int): Nth thread of image downloading.
 
     Returns:
-        (float, int): (the size of the downloaded image in Bytes, thread_id)
+        (float, int): (the size of the downloaded image in bytes, thread_id)
     """
 
     # Type I: https://www.pixiv.net/artworks/117469273 type
@@ -50,7 +50,9 @@ def pixiv_download_image_from_url(
         response_text = None
         request_headers = download_config.result_headers
         if request_headers is None:  # Pixiv must have a header
-            request_headers = UserAgent.random_agent_with_name("Chrome")
+            ua = ua_generator.generate(browser=('chrome', 'edge'))
+            ua.headers.accept_ch('Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List')
+            request_headers = ua.headers.get()
         request_headers["Referer"] = f"https://www.pixiv.net/artworks/{artwork_id}"
 
         try:            
@@ -71,7 +73,7 @@ def pixiv_download_image_from_url(
                         response_text = response.text
                         break
                     elif response.status_code == 429:
-                        log.warning(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads and try again.', extra={"markup": True})
+                        log.warning(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads or increase thread delay time and try again.', extra={"markup": True})
                         time.sleep(60 + random.random() * 60)
                     elif 400 <= response.status_code < 500:
                         log.error(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED because response status code is {response.status_code}.', extra={"markup": True})
@@ -148,7 +150,9 @@ def pixiv_download_image_from_url(
 
         request_headers = download_config.result_headers
         if request_headers is None:  # Pixiv must have a header
-            request_headers = UserAgent.random_agent_with_name("Chrome")
+            ua = ua_generator.generate(browser=('chrome', 'edge'))
+            ua.headers.accept_ch('Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List')
+            request_headers = ua.headers.get()
         request_headers["Referer"] = f"https://www.pixiv.net/artworks/{new_url.split('/')[-1].split('_')[0]}"
 
         is_success, image_size = download_image(

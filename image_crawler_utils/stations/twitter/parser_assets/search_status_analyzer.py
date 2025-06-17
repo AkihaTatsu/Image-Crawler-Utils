@@ -10,9 +10,9 @@ from bs4 import BeautifulSoup
 import nodriver
 import asyncio
 
-from image_crawler_utils import CrawlerSettings
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from .... import CrawlerSettings
+from ....log import Log
+from ....progress_bar import CustomProgress, ProgressGroup
 
 from .constants import SCROLL_DELAY, SCROLL_NUM, DOWN_SCROLL_LENGTH, LOAD_SCROLL_LENGTH
 from .status_classes import TwitterStatus, TwitterStatusMedia
@@ -27,12 +27,12 @@ def parse_twitter_status_element(
     """
     Parse Twitter / X status element from search result page: "<article ...></article>".
 
-    Parameters:
+    Args:
         status_html (str): HTML string of status element "<article ...></article>".
-        log (crawler_utils.log.Log, optional): Logging config.
+        log (image_crawler_utils.log.Log, None): Logging config.
 
     Returns:
-        A crawler_utils.stations.twitter.TwitterStatus class.
+        A image_crawler_utils.stations.twitter.TwitterStatus class.
     """
 
     soup = BeautifulSoup(status_html, "lxml")
@@ -137,12 +137,12 @@ async def find_twitter_status(
     """
     Finding all Twitter / X status on current searching result page.
 
-    Parameters:
+    Args:
         tab (unodriver.Tab): Nodriver tab with loaded searching result page.
-        log (crawler_utils.log.Log, optional): Logging config.
+        log (image_crawler_utils.log.Log, None): Logging config.
 
     Returns:
-        A list of crawler_utils.stations.twitter.TwitterStatus class.
+        A list of image_crawler_utils.stations.twitter.TwitterStatus class.
     """
 
     status_list: list[TwitterStatus] = []
@@ -173,8 +173,8 @@ async def scrolling_to_find_status(
     """
     Scrolling to finding all Twitter / X status on current searching result page.
 
-    Parameters:
-        crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings.
+    Args:
+        crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
         tab (nodriver.Tab): nodriver.Tab with loaded searching result page.
         reload_times (int): To deal with (possible) missing status, reload pages for reload_times to get status results.
         error_retry_delay (float): When an error happens (especially Twitter / X returns an error), sleep error_retry_delay before reloading again.
@@ -182,7 +182,7 @@ async def scrolling_to_find_status(
         transient (bool): Hide Progress bars after finishing.
 
     Returns:
-        A list of crawler_utils.stations.twitter.TwitterStatus class, sort by status from large to small.
+        A list of image_crawler_utils.stations.twitter.TwitterStatus class, sort by status from large to small.
     """
     
     # Fetching status with retrying; every attempt may lead to different results
@@ -316,7 +316,7 @@ async def scrolling_to_find_status(
                     main_structure = await tab.select('div[data-testid="primaryColumn"]')
                     error_element = await main_structure.query_selector('button[class="css-175oi2r r-sdzlij r-1phboty r-rs99b7 r-lrvibr r-2yi16 r-1qi8awa r-3pj75a r-1loqt21 r-o7ynqc r-6416eg r-1ny4l3l"]')
                     await error_element.click()
-                    await tab.sleep()
+                    await tab
                     not_from_retry_button = False  # Keep collected status and do not scroll up & update retry count
                 except:  # Failed to find the button, then reload the page
                     crawler_settings.log.warning(f'Retry button is missing in [repr.url]{tab_url}[reset]! Refreshing this page.', extra={"markup": True})
@@ -342,7 +342,7 @@ async def scrolling_to_find_status(
         # Reload page again
         if reload_count < reload_times - 1:
             await tab.get(tab_url)  # Refresh
-            await tab.sleep()
+            await tab
             await tab.scroll_up(1000)
 
     final_status_list.sort(reverse=True)  # Sort by status_id from large to small

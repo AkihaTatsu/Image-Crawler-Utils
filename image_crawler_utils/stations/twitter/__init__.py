@@ -1,31 +1,31 @@
-from .constants import (
+from .parser_assets.constants import (
     SCROLL_DELAY,
     SCROLL_NUM,
     DOWN_SCROLL_LENGTH,
 )
-from .search_settings import (
+from .parser_assets.search_settings import (
     TwitterSearchSettings,
 )
-from .search_status_analyzer import (
+from .parser_assets.search_status_analyzer import (
     parse_twitter_status_element,
     find_twitter_status,
     scrolling_to_find_status,
 )
-from .status_classes import (
+from .parser_assets.status_classes import (
     TwitterStatus,
     TwitterStatusMedia,
 )
-from .twitter_cookies import (
+from .parser_assets.twitter_cookies import (
     get_twitter_cookies,
 )
-from .utils import (
+from .parser_assets.utils import (
     twitter_empty_check,
     twitter_error_check,
 )
-from .keyword_parser import (
+from .parser_assets.keyword_parser import (
     TwitterKeywordMediaParser,
 )
-from .user_parser import (
+from .parser_assets.user_parser import (
     TwitterUserMediaParser,
 )
 

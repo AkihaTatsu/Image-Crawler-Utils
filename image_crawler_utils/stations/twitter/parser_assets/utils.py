@@ -10,7 +10,7 @@ async def twitter_progress_bar_loading(
     """
     As long as there is an progress bar (rotating circle) in loading Twitter / X page, this function will not exit.
 
-    Parameters:
+    Args:
         tab (nodriver.Tab): Nodriver tab with loaded searching result page.
     """
     
@@ -29,7 +29,7 @@ async def twitter_error_check(
     """
     Check if there is an error in loading Twitter / X page.
 
-    Parameters:
+    Args:
         tab (nodriver.Tab): Nodriver tab with loaded searching result page.
 
     Returns:
@@ -50,17 +50,17 @@ async def twitter_empty_check(
     """
     Check if the result is empty.
 
-    Parameters:
+    Args:
         tab (nodriver.Tab): Nodriver tab with loaded searching result page.
         tab_url (str): URL of the tab.
-        log (crawler_utils.log.Log, optional): Logging config.
+        log (image_crawler_utils.log.Log, None): Logging config.
 
     Returns:
         Return True if found empty element, or return False.
     """
 
     try:
-        await tab.sleep()
+        await tab
         empty_elem = await tab.select('div[data-testid="empty_state_header_text"]')
         return True if empty_elem is not None else False    
     except:

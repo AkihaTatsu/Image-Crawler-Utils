@@ -5,10 +5,10 @@ import traceback
 from urllib import parse
 import nodriver
 
-from image_crawler_utils import Cookies, KeywordParser, CrawlerSettings, ImageInfo, update_nodriver_browser_cookies
-from image_crawler_utils.keyword import KeywordLogicTree
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
-from image_crawler_utils.utils import set_up_nodriver_browser
+from .... import Cookies, KeywordParser, CrawlerSettings, ImageInfo, update_nodriver_browser_cookies
+from ....keyword import KeywordLogicTree
+from ....progress_bar import CustomProgress, ProgressGroup
+from ....utils import set_up_nodriver_browser
 
 from .search_settings import TwitterSearchSettings
 from .search_status_analyzer import scrolling_to_find_status
@@ -20,6 +20,27 @@ from .status_classes import TwitterStatus
 
 
 class TwitterKeywordMediaParser(KeywordParser):
+    """
+    Keyword Parser for Twitter. Will fetch all media images from the searching result of certain keywords.
+
+    Args:
+        crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
+        station_url (str): The URL of the main page of a website.
+
+            + This parameter works when several websites use the same structure. For example, https://yande.re/ and https://konachan.com/ both use Moebooru to build their websites, and this parameter must be filled to deal with these sites respectively.
+            + For websites like https://www.pixiv.net/, as no other website uses its structure, this parameter has already been initialized and do not need to be filled.
+
+        standard_keyword_string (str): Query keyword string using standard syntax. Refer to the documentation for detailed instructions.
+        keyword_string (str, None): If you want to directly specify the keywords used in searching, set ``keyword_string`` to a custom non-empty string. It will OVERWRITE ``standard_keyword_string``.
+
+            + For example, set ``keyword_string`` to ``"kuon_(utawarerumono) rating:safe"`` in DanbooruKeywordParser means searching directly with this string in Danbooru, and its standard keyword string equivalent is ``"kuon_(utawarerumono) AND rating:safe"``.
+
+        cookies (image_crawler_utils.Cookies, str, dict, list, None): Cookies containing logging information.
+        twitter_search_settings (image_crawler_utils.stations.twitter.TwitterSearchSettings): A TwitterSearchSettings class that contains extra options when searching.
+        reload_times (int): Reload the page for ``reload_times`` times. May be useful when there are status (tweets) not detected.
+        error_retry_delay (float): When Twitter / X returns an error, the Parser will retry after ``error_retry_delay`` seconds.
+        headless (bool): Do not display browsers window when a browser is started. Set to :py:data:`False` will pop up browser windows.
+    """
 
     def __init__(
         self, 
@@ -33,18 +54,6 @@ class TwitterKeywordMediaParser(KeywordParser):
         error_retry_delay: float=200,
         headless: bool=True,
     ):
-        """
-        Parameters:
-            crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings.
-            station_url (str): URL of the website.
-            standard_keyword_string (str): A keyword string using standard syntax.
-            pixiv_search_settings (crawler_utils.stations.pixiv.PixivSearchSettings): Settings for Pixiv searching.
-            keyword_string (str, optional): Specify the keyword string yourself. You can write functions to generate them from the keyword tree afterwards.
-            cookies (crawler_utils.cookies.Cookies, str, dict or list, optional): Cookies containing logging information.
-            reload_times (int): Time of reloading page in case some status are omitted.
-            error_retry_delay (float): Pause error_retry_delay seconds if an error happened.
-            headless (bool): Hide browser window when browser is loaded.
-        """
 
         super().__init__(
             station_url=station_url,
@@ -61,6 +70,9 @@ class TwitterKeywordMediaParser(KeywordParser):
 
 
     def run(self) -> list[ImageInfo]:
+        """
+        The main function that runs the Parser and returns a list of :class:`image_crawler_utils.ImageInfo`.
+        """
         if self.cookies.is_none():
             raise ValueError('Cookies cannot be empty!')
         if self.keyword_string is None:
@@ -125,7 +137,9 @@ class TwitterKeywordMediaParser(KeywordParser):
                         progress.update(task, advance=1, description="Requesting searching result once...")
 
                         tab = await browser.get(search_status_url)
-                        await tab.select('div[id="react-root"]')
+                        result = await tab.select('div[id="react-root"]')
+                        if result is None:
+                            raise ModuleNotFoundError('Element div[id="react-root"] not found')
                     except Exception as e:
                         browser.stop()
                         raise ConnectionError(f"{e}")

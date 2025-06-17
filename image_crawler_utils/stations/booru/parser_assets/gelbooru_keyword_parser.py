@@ -4,9 +4,9 @@ import json
 from urllib import parse
 import requests
 
-from image_crawler_utils import Cookies, KeywordParser, ImageInfo, CrawlerSettings
-from image_crawler_utils.keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
+from .... import Cookies, KeywordParser, ImageInfo, CrawlerSettings
+from ....keyword import KeywordLogicTree, min_len_keyword_group, construct_keyword_tree_from_list
+from ....progress_bar import CustomProgress, ProgressGroup
 
 from .constants import GELBOORU_IMAGE_NUM_PER_JSON, MAX_GELBOORU_JSON_PAGE_NUM, SPECIAL_WEBSITES
 
@@ -16,6 +16,48 @@ from .constants import GELBOORU_IMAGE_NUM_PER_JSON, MAX_GELBOORU_JSON_PAGE_NUM, 
 
 
 class GelbooruKeywordParser(KeywordParser):
+    """
+    Args:
+        crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
+        station_url (str): The URL of the main page of a website.
+
+            + This parameter works when several websites use the same structure. For example, https://yande.re/ and https://konachan.com/ both use Moebooru to build their websites, and this parameter must be filled to deal with these sites respectively.
+            + For websites like https://www.pixiv.net/, as no other website uses its structure, this parameter has already been initialized and do not need to be filled.
+
+        standard_keyword_string (str): Query keyword string using standard syntax. Refer to the documentation for detailed instructions.
+        cookies (image_crawler_utils.Cookies, list, dict, str, None): Cookies used in loading websites.
+
+            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`..
+                + :py:data:`None` means no cookies and works the same as ``Cookies()``.
+                + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
+
+        keyword_string (str, None): If you want to directly specify the keywords used in searching, set ``keyword_string`` to a custom non-empty string. It will OVERWRITE ``standard_keyword_string``.
+
+            + For example, set ``keyword_string`` to ``"kuon_(utawarerumono) rating:safe"`` in DanbooruKeywordParser means searching directly with this string in Danbooru, and its standard keyword string equivalent is ``"kuon_(utawarerumono) AND rating:safe"``.
+
+        use_api (bool): Use Moebooru API page, like https://yande.re/post.json?api_version=2.
+
+            + Set to :py:data:`False` will parse image infos from directly visited gallery pages, like https://yande.re/.
+            + For some websites like konachan.com, the API is protected, and you need to set this parameters to False to ensure that the Parser works correctly.
+
+        replace_url_with_source_level (str, must be one of "All", "File", and "None"): A level controlling whether the Parser will try to download from the source URL of images instead of from the current website.
+
+            + It has 3 available levels, and default is "None":
+                + "All" or "all" (NOT SUGGESTED): As long as the image has a source URL, try to download from this URL first.
+                + "File" or "file": If the source URL looks like a file (e.g. https://foo.bar/image.png) or it is one of several special websites (e.g. Pixiv or Twitter / X status), try to download from this URL first.
+                + "None" or "none": Do not try to download from any source URL first.
+            + Both source URLs and Danbooru URLs are stored in ImageInfo class and will be used when downloading. This parameters only controls the priority of URLs.
+            + Set to a level other than "None" / "none" will reduce the pressure on Danbooru server but cost longer time (as source URLs may not be directly accessible, or they are absolutely unavailable).
+
+        use_keyword_include (bool): If this parameter is set to :py:data:`True`, KeywordParser will try to find keyword / tag subgroups with lowest number of keywords / tags (or subgroups with number of keywords / tags lower than a threshold, like 2 in Danbooru for those without an account) that contain all searching results with the least page number.
+
+            + Only works when ``standard_keyword_string`` is used. When ``keyword_string`` is specified, this parameter is omitted.
+            + For example, if the ``standard_keyword_string`` is set to "kuon_(utawarerumono) AND rating:safe OR utawarerumono", then the Parser will check "kuon_(utawarerumono) OR utawarerumono" and "rating:safe OR utawarerumono" and select the group with the least page number of results as the keyword string in later queries.
+            + If no subgroup with less than 2 keywords / tags exists (e.g. "kuon_(utawarerumono) OR rating:safe OR utawarerumono"), the Parser will try to find keyword / tag subgroups with the least keyword / tag number. This may often CAUSE ERRORS, so make a quick check of your keywords before setting this parameter to :py:data:`True`.
+
+        api_key (str): The api_key used to access JSON-API. Can be acquired after logging in at https://gelbooru.com/index.php?page=account&s=options.
+        user_id (str): The user_id used to access JSON-API. Can be acquired after logging in at https://gelbooru.com/index.php?page=account&s=options.
+    """
 
     def __init__(
         self, 
@@ -26,21 +68,9 @@ class GelbooruKeywordParser(KeywordParser):
         cookies: Optional[Union[Cookies, list, dict, str]]=Cookies(),
         replace_url_with_source_level: str="None",
         use_keyword_include: bool=False,
+        api_key: str=None,
+        user_id: str=None,
     ):
-        """
-        Parameters:
-            crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings.
-            station_url (str): URL of the website.
-            standard_keyword_string (str): A keyword string using standard syntax.
-            cookies (Cookies, list, dict, str or None): Cookies used in loading websites.
-            keyword_string (str, optional): Specify the keyword string yourself. You can write functions to generate them from the keyword tree afterwards.
-            replace_url_with_source_level (str, must be one of "All", "File", and "None"):
-                - "All" means while the source of image exists, use the downloading URL with the one from source first.
-                - "File" means if the source of image is a file or some special websites, use the source downloading URL first.
-                - "None" means as long as the original URL exists, do not use source URL first.
-            use_keyword_include (bool): Using a new keyword string whose searching results can contain all images belong to the original keyword string result. Default set to False.
-                - Example: search "A" can contain all results by "A and B"
-        """
 
         super().__init__(
             station_url=station_url,
@@ -51,9 +81,16 @@ class GelbooruKeywordParser(KeywordParser):
         )
         self.replace_url_with_source_level = replace_url_with_source_level.lower()
         self.use_keyword_include = use_keyword_include
+        self.api_key = api_key
+        self.user_id = user_id
+        if api_key is None or user_id is None:
+            self.crawler_settings.log.warning("api_key and user_id should not be empty! Otherwise, the API page is quite possibly not accessible.")
 
 
     def run(self) -> list[ImageInfo]:
+        """
+        The main function that runs the Parser and returns a list of :class:`image_crawler_utils.ImageInfo`.
+        """
         with requests.Session() as session:
             if not self.cookies.is_none():
                 session.cookies.update(self.cookies.cookies_dict)
@@ -64,7 +101,7 @@ class GelbooruKeywordParser(KeywordParser):
                 else:
                     self.generate_keyword_string()
 
-            self.get_total_image_num(session=session)
+            self.get_total_image_num_json(session=session)
             self.get_json_page_num()
             self.get_json_page_urls()
             self.get_image_info_from_json(session=session)
@@ -121,7 +158,7 @@ class GelbooruKeywordParser(KeywordParser):
             for string in keyword_strings:
                 self.crawler_settings.log.debug(f'Testing the image num of keyword string: {string}')
                 self.keyword_string = string
-                image_num = self.get_total_image_num(session=session)
+                image_num = self.get_total_image_num_json(session=session)
                 self.crawler_settings.log.debug(f'The image num of {string} is {image_num}.')
                 if min_image_num is None or image_num < min_image_num:
                     min_image_num = image_num
@@ -135,8 +172,8 @@ class GelbooruKeywordParser(KeywordParser):
         return self.keyword_string
 
 
-    # Get total image num
-    def get_total_image_num(self, session: requests.Session=None) -> int:
+    # Get total image num from JSON
+    def get_total_image_num_json(self, session: requests.Session=None) -> int:
         if session is None:
             session = requests.Session()
             session.cookies.update(self.cookies.cookies_dict)
@@ -145,13 +182,13 @@ class GelbooruKeywordParser(KeywordParser):
         self.crawler_settings.log.info(f'Connecting to the first JSON-API page using keyword string "{self.keyword_string}" ...')
 
         # Generate URL
-        first_page_url = parse.quote(f"{self.station_url}index.php?page=dapi&s=post&q=index&json=1&tags={self.keyword_string}", safe='/:?=&')
+        first_page_url = parse.quote(f"{self.station_url}index.php?page=dapi&s=post&q=index&json=1{f'&api_key={self.api_key}' if self.api_key is not None else ''}{f'&user_id={self.user_id}' if self.user_id is not None else ''}&tags={self.keyword_string}", safe='/:?=&')
 
         # Get content
         content = self.request_page_content(first_page_url, session=session)
         if content is None:
             self.crawler_settings.log.critical(f"CANNOT connect to the first JSON-API page, URL: [repr.url]{first_page_url}[reset]", extra={"markup": True})
-            raise ConnectionError(f"CANNOT connect to the first JSON-API page, URL: [repr.url]{first_page_url}[reset]", extra={"markup": True})
+            raise ConnectionError(f"CANNOT connect to the first JSON-API page, URL: {first_page_url}")
         else:
             self.crawler_settings.log.info(f'Successfully connected to the first JSON-API page.')
 
@@ -181,7 +218,7 @@ class GelbooruKeywordParser(KeywordParser):
             total_page_num = self.last_json_page_num
 
         page_numlist = [str(item) for item in range(0, total_page_num)]
-        self.json_page_urls = [f"{self.station_url}index.php?page=dapi&s=post&q=index&json=1&tags={self.keyword_string}&pid={page_num}" for page_num in page_numlist]
+        self.json_page_urls = [f"{self.station_url}index.php?page=dapi&s=post&q=index&json=1{f'&api_key={self.api_key}' if self.api_key is not None else ''}{f'&user_id={self.user_id}' if self.user_id is not None else ''}&tags={self.keyword_string}&pid={page_num}" for page_num in page_numlist]
 
         return self.json_page_urls
     
@@ -296,3 +333,4 @@ class GelbooruKeywordParser(KeywordParser):
         self.parent_id_list = list(set(parent_id_list))
         self.image_info_list = image_info_list
         return self.image_info_list
+    

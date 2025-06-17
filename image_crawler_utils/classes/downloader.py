@@ -9,17 +9,55 @@ import requests
 from rich import print, markup
 from rich.progress import SpinnerColumn
 
-from image_crawler_utils import Cookies, CrawlerSettings
-from image_crawler_utils.image_downloader import download_image_from_url
-from image_crawler_utils.progress_bar import ProgressGroup
-from image_crawler_utils.utils import check_dir
-from image_crawler_utils.log import Log
+from .. import Cookies, CrawlerSettings
+from ..image_downloader import download_image_from_url
+from ..progress_bar import ProgressGroup
+from ..utils import check_dir
+from ..log import Log
 
 from .image_info import ImageInfo
 
 
 
 class Downloader:
+    """
+    Downloading images using threading method.
+
+    Args:
+        crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Downloader.
+        image_info_list (image_crawler_utils.ImageInfo): A list of ImageInfo.
+        store_path (str): Path to store images, or a list of storage paths respectively for every image.
+
+            + Default is the current working directory.
+            + If it set to an iterable list, then its length should be the same as ``image_info_list``.
+
+        image_info_filter (callable, bool): A callable function used to filter the images in the list of ImageInfo.
+
+            + The function of ``image_info_filter`` should only accept 1 argument of ImageInfo type and returns `True` (download this image) or `False` (do not download this image), like:
+            
+                .. code-block:: python
+
+                    def filter_func(image_info: ImageInfo) -> bool:
+                        # Meet the conditions
+                        return True
+                        # Do not meet the conditions
+                        return False
+            
+            + If the function have other parameters, use ``lambda`` to exclude other parameters:
+            
+                .. code-block:: python
+
+                    image_info_filter=lambda info: filter_func(info, param1, param2, ...)
+            
+            + If you want to download all images in the ImageInfo list, set ``image_info_filter`` to :py:data:`True`.
+            + **TIPS**: If you want to search images with complex restrictions that the image station sites may not support (e.g. Images with many keywords and restrictions on the ratio between width and height), you can simplify the query with some keywords to get all images with Parsers, and filter them with your custom ``image_info_filter`` function.
+
+        cookies (image_crawler_utils.Cookies, str, dict, list, None): Cookies used to access images from a website.
+
+            + :py:data:`None` means no cookies and works the same as ``Cookies()``.
+            + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
+            + **TIPS**: You can add corresponding cookies to Downloader if there are URLs of images only accessible with an account. For example, if you have saved Pixiv and Twitter / X cookies respectively in ``Pixiv_cookies.json`` and ``Twitter_cookies.json``, then you can use ``cookies=Cookies.load_from_json("Pixiv_cookies.json") + Cookies.load_from_json("Twitter_cookies.json")`` to add both cookies to the Downloader.
+    """
 
     def __init__(
         self,
@@ -29,24 +67,6 @@ class Downloader:
         image_info_filter: Union[Callable, bool]=True,
         cookies: Optional[Union[Cookies, list, dict, str]]=Cookies(),
     ):
-        """
-        Downloading images using threading method.
-
-        Parameters:
-            crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings for this downloader.
-            image_info_list (image_crawler_utils.ImageInfo): A list of ImageInfo.
-            store_path (str): Path to store images. Default set to current directory.
-            image_info_filter (function or bool): Filter the image that does not meet the requirements. 
-                - If it is function, it works like image_info_filter(image_crawler_utils.ImageInfo)
-                It is suggested using lambda x: filter(x, other_args)
-                - If it is True, no images will be omitted. 
-                - If it is False, all images will be omitted.
-            cookies (crawler_utils.cookies.Cookies, str, dict or list, optional): Cookies containing logging information.
-            
-        Attributes:
-            run(): Running the downloader. Return total image size (Bytes) and succeeded, failed and skipped ImageInfo list.
-            display_all_configs(): Display all configs of downloader.
-        """
         
         self.crawler_settings = crawler_settings
         self.image_info_list = image_info_list
@@ -60,22 +80,32 @@ class Downloader:
         if isinstance(cookies, Cookies):
             self.cookies = cookies
         else:
-            self.cookies = Cookies.create_by(cookies)
+            self.cookies = Cookies(cookies)
 
 
-    def run(self) -> tuple[float, list[ImageInfo], list[ImageInfo], list[ImageInfo]]:
+    def run(self) -> tuple[int, list[ImageInfo], list[ImageInfo], list[ImageInfo]]:
         """
         Run the Threading Downloader Object.
         
         Returns:
-            (total size of image downloaded, succeeded ImageInfo list, failed ImageInfo list, skipped ImageInfo list)
+            (Total size of image downloaded, Succeeded ImageInfo list, Failed ImageInfo list, Skipped ImageInfo list)
+
+                + **Total size of image downloaded**: An int denoting the total size (in bytes) of images downloaded.
+                + **Succeeded ImageInfo list**: A list of ImageInfo containing successfully downloaded images.
+                + **Failed ImageInfo list**: A list of ImageInfo containing images failed to be downloaded.
+
+                    + Images not downloaded due to reaching ``capacity`` defined in :class:`image_crawler_utils.CrawlerSettings` will be classified to this list.
+
+                + **Skipped ImageInfo list**: A list of ImageInfo containing images skipped.
+                
+                    + Images filtered out by ``image_info_filter``, not downloaded due to the restriction of ``image_num`` in :class:`image_crawler_utils.CrawlerSettings`, and skipped due to such images already exist when ``overwrite_images`` in DownloadConfig is set to :py:data:`False` will be classified to this list.
         """
 
         # Filter image info list
-        download_num, filtered_ordinals_list, skipped_ordinals_list = self.filter_ordinals_list()
+        download_num, filtered_ordinals_list, skipped_ordinals_list = self.__filter_ordinals_list()
         
         # Download images
-        download_traffic, succeeded_ordinals_list, failed_ordinals_list = self.download_images(download_num, filtered_ordinals_list)
+        download_traffic, succeeded_ordinals_list, failed_ordinals_list = self.__download_images(download_num, filtered_ordinals_list)
 
         # Conclude
         self.crawler_settings.log.info(f"{len(succeeded_ordinals_list)} succeeded ({download_traffic / 2**20:.2f} MB in total), {len(failed_ordinals_list)} failed, {len(skipped_ordinals_list)} skipped.")
@@ -92,11 +122,11 @@ class Downloader:
         pkl_file: str,
     ) -> Optional[tuple[str, str]]:
         """
-        Save the parser in a pkl file. 
+        Save the Downloader with settings in a pkl file. 
 
-        Parameters:
+        Args:
             path (str): Path to save the pkl file. Default is saving to the current path.
-            pkl_file (str, optional): Name of the pkl file. (Suffix is optional.)
+            pkl_file (str, None): Name of the pkl file. (Suffix is optional.)
 
         Returns:
             (Saved file name, Absolute path of the saved file), or None if failed.
@@ -126,9 +156,9 @@ class Downloader:
         """
         Load parser from .pkl file.
 
-        Parameters:
-            pkl_file (str, optional): Name of the pkl file.
-            log (crawler_utils.log.Log, optional): Logging config.
+        Args:
+            pkl_file (str, None): Name of the pkl file.
+            log (image_crawler_utils.log.Log, None): Logging config.
 
         Returns:
             A CrawlerSettings class loaded from pkl file, or None if failed.
@@ -145,7 +175,7 @@ class Downloader:
     
 
     # Filter image info list
-    def filter_ordinals_list(self) -> tuple[int, list[ImageInfo], list[ImageInfo]]:
+    def __filter_ordinals_list(self) -> tuple[int, list[ImageInfo], list[ImageInfo]]:
         # Filter iamges
         filtered_ordinals_list: list[int] = []
         skipped_ordinals_list: list[int] = []
@@ -190,7 +220,7 @@ class Downloader:
     
 
     # Download images
-    def download_images(self, download_num: int, filtered_ordinals_list: list[ImageInfo]) -> tuple[float, list[ImageInfo], list[ImageInfo]]:
+    def __download_images(self, download_num: int, filtered_ordinals_list: list[ImageInfo]) -> tuple[float, list[ImageInfo], list[ImageInfo]]:
         if download_num <= 0:
             self.crawler_settings.log.warning(f"No images are to be downloaded.")
             return 0, [], []
@@ -278,7 +308,7 @@ class Downloader:
                                         failed_ids.remove(failed_n)
                                     undone_ids.remove(failed_n)
 
-                            if self.crawler_settings.capacity_count_config.capacity is not None and download_traffic / 2**20 > self.crawler_settings.capacity_count_config.capacity:
+                            if self.crawler_settings.capacity_count_config.capacity is not None and download_traffic > self.crawler_settings.capacity_count_config.capacity:
                                 self.crawler_settings.log.warning("Downloading capacity reached!")
                                 executor.shutdown(wait=False, cancel_futures=True)
                                 undone_ids = []
@@ -328,16 +358,16 @@ class Downloader:
 
         print('\nBasic Info:')
         try:
-            print(f"  - Image info filter: {self.image_info_filter}")
-            print(f"  - Store path: [repr.filename]{markup.escape(self.store_path)}[reset]")
-            print(f"  - Absolute store path: [repr.filename]{markup.escape(os.path.abspath(self.store_path))}[reset]")
+            print(f"  + Image info filter: {self.image_info_filter}")
+            print(f"  + Store path: [repr.filename]{markup.escape(self.store_path)}[reset]")
+            print(f"  + Absolute store path: [repr.filename]{markup.escape(os.path.abspath(self.store_path))}[reset]")
         except Exception as e:
             print(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
 
         print('\nImage downloading info:')
         try:
-            download_num, filtered_ordinals_list, skipped_ordinals_list = self.filter_ordinals_list()
-            print(f"  - Number of images to be downloaded: {len(filtered_ordinals_list)}")
+            download_num, filtered_ordinals_list, skipped_ordinals_list = self.__filter_ordinals_list()
+            print(f"  + Number of images to be downloaded: {len(filtered_ordinals_list)}")
         except Exception as e:
             print(f"Image downloading info has an error because {e}!\n{traceback.format_exc()}", "error")
 

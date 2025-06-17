@@ -9,16 +9,18 @@ from collections.abc import Iterable, Callable
 import os, dill
 from rich import print, markup
 
+import json
+from bs4 import BeautifulSoup
 from urllib import parse
 from concurrent import futures
 
-import nodriver
+import nodriver, asyncio
 
-from image_crawler_utils import Cookies
-from image_crawler_utils.keyword import KeywordLogicTree, construct_keyword_tree
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
-from image_crawler_utils.utils import check_dir, Empty, set_up_nodriver_browser
+from .. import Cookies, update_nodriver_browser_cookies
+from ..keyword import KeywordLogicTree, construct_keyword_tree
+from ..log import Log
+from ..progress_bar import CustomProgress, ProgressGroup
+from ..utils import check_dir, Empty, set_up_nodriver_browser
 
 from .crawler_settings import CrawlerSettings
 from .image_info import ImageInfo
@@ -26,6 +28,23 @@ from .image_info import ImageInfo
 
 
 class Parser(ABC):
+    """
+    A Parser include several basic functions.
+
+    Args:
+        station_url (str): The URL of the main page of a website.
+
+            + This parameter works when several websites use the same structure. For example, https://yande.re/ and https://konachan.com/ both use Moebooru to build their websites, and this parameter must be filled to deal with these sites respectively.
+            + For websites like https://www.pixiv.net/, as no other website uses its structure, this parameter has already been initialized and do not need to be filled.
+
+        crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
+        cookies (image_crawler_utils.Cookies, list, dict, str, None): Cookies used in loading websites.
+
+            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`..
+                + :py:data:`None` means no cookies and works the same as ``Cookies()``.
+                + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
+
+    """
 
     def __init__(
         self,
@@ -33,27 +52,13 @@ class Parser(ABC):
         crawler_settings: CrawlerSettings=CrawlerSettings(),
         cookies: Optional[Union[Cookies, list, dict, str]]=Cookies(),
     ):
-        """
-        A Parser include several basic functions.
-
-        Parameters:
-            station_url (str): URL of the main station of the Parser.
-            crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings for this parser.
-            cookies (Cookies, list, dict, str or None): Cookies used in loading websites.
-
-        Attributes:
-            run(): Running the parser. Return total image size and succeeded, failed and skipped ImageInfo list.
-            display_all_configs(): Display all configs of parser.
-            request_page_content(): Download webpage content using configs in Parser.
-            threading_request_page_content(): Downloading a list of webpage contents.
-        """
         super().__init__()
         self.crawler_settings = crawler_settings
         self.station_url = parse.quote(station_url + ('/' if not station_url.endswith('/') else ''), safe='/:?=&')
         if isinstance(cookies, Cookies):
             self.cookies = cookies
         else:
-            self.cookies = Cookies.create_by(cookies)
+            self.cookies = Cookies(cookies)
 
 
     ##### Funtion requires rewriting
@@ -83,11 +88,11 @@ class Parser(ABC):
         # Basic info
         try:
             print('\nBasic Info:')
-            print(f"  - Station URL: [repr.url]{markup.escape(self.station_url)}[reset]")
+            print(f"  + Station URL: [repr.url]{markup.escape(self.station_url)}[reset]")
             if self.cookies.is_none():                
-                print(f"  - Cookies: None")
+                print(f"  + Cookies: None")
             else:
-                print(f"  - Cookies:")
+                print(f"  + Cookies:")
                 print(self.cookies.cookies_selenium)
         except Exception as e:
             print(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
@@ -98,7 +103,7 @@ class Parser(ABC):
         for varname in self.__init__.__code__.co_varnames:
             if varname not in KeywordParser.__init__.__code__.co_varnames:
                 if getattr(self, varname, None) is not None:
-                    print(f"  - {varname}: {getattr(self, varname)}")
+                    print(f"  + {varname}: {getattr(self, varname)}")
 
         print('')
         print("CrawlerSettings used:")
@@ -113,11 +118,11 @@ class Parser(ABC):
         pkl_file: str,
     ) -> Optional[tuple[str, str]]:
         """
-        Save the parser in a pkl file. 
+        Save the parser in a .pkl file. 
 
-        Parameters:
+        Args:
             path (str): Path to save the pkl file. Default is saving to the current path.
-            pkl_file (str, optional): Name of the pkl file. (Suffix is optional.)
+            pkl_file (str, None): Name of the pkl file. (Suffix is optional.)
 
         Returns:
             (Saved file name, Absolute path of the saved file), or None if failed.
@@ -145,11 +150,13 @@ class Parser(ABC):
         log: Log=Log(),
     ) -> CrawlerSettings:
         """
-        Load parser from .pkl file.
+        Load the parser from .pkl file.
 
-        Parameters:
-            pkl_file (str, optional): Name of the pkl file.
-            log (crawler_utils.log.Log, optional): Logging config.
+        ATTENTION: You should use the correspondent Parser class when loading. For example, loading DanbooruKeywordParser should use ``DanbooruKeywordParser.load_from_pkl()``.
+
+        Args:
+            pkl_file (str, None): Name of the pkl file.
+            log (image_crawler_utils.log.Log, None): Logging config.
 
         Returns:
             A CrawlerSettings class loaded from pkl file, or None if failed.
@@ -165,6 +172,11 @@ class Parser(ABC):
             return None
 
 
+    # --------------------------------------------------------- #
+    # BASIC REQUEST METHOD: Using requests to get contents      #
+    # --------------------------------------------------------- #
+
+
     # Get webpage content
     def request_page_content(
         self, 
@@ -176,10 +188,10 @@ class Parser(ABC):
         """
         Download webpage content.
 
-        Parameters:
+        Args:
             url (str): The URL of the page to download.
             session (requests from import requests, or requests.Session): Can be requests or requests.Session()
-            headers (dict or function, optional): If you need to specify headers for current request, use this argument. Set to None (default) meaning use the headers from self.crawler_settings.download_config.result_headers
+            headers (dict, Callable, None): If you need to specify headers for current request, use this argument. Set to None (default) meaning use the headers from self.crawler_settings.download_config.result_headers
             thread_delay: Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
         
         Returns:
@@ -213,7 +225,7 @@ class Parser(ABC):
                     self.crawler_settings.log.debug(f'Successfully connected to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1}.', extra={"markup": True})
                     return response.text
                 elif response.status_code == 429:
-                    self.crawler_settings.log.warning(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads and try again.', extra={"markup": True})
+                    self.crawler_settings.log.warning(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {response.status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads or increase thread delay time and try again.', extra={"markup": True})
                     time.sleep(60 + random.random() * 60)
                 elif 400 <= response.status_code < 500:
                     self.crawler_settings.log.error(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED because response status code is {response.status_code}.', extra={"markup": True})
@@ -265,13 +277,13 @@ class Parser(ABC):
         """
         Download multiple webpage content using threading.
 
-        Parameters:
+        Args:
             url_list (list[str]): The list of URLs of the page to download.
-            restriction_num (int, optional): Only download the first restriction_num number of pages. Set to None (default) meaning no restrictions.
+            restriction_num (int, None): Only download the first restriction_num number of pages. Set to None (default) meaning no restrictions.
             session (requests from import requests, or requests.Session): Can be requests or requests.Session()
-            headers (dict, list or function, optional): If you need to specify headers for current threading requests, use this argument. Set to None (default) meaning use the headers from self.crawler_settings.download_config.result_headers
-                - If it is a list, it should be of the same length as url_list, and for url_list[i] it will use the headers in headers[i]. The element in this list can be a dict of a function.
-            thread_delay (float or function, optional): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            headers (dict, list, Callable, None): If you need to specify headers for current threading requests, use this argument. Set to None (default) meaning use the headers from self.crawler_settings.download_config.result_headers
+                + If it is a list, it should be of the same length as url_list, and for url_list[i] it will use the headers in headers[i]. The element in this list can be a dict of a function.
+            thread_delay (float, Callable, None): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
             batch_num: Number of pages for each batch; using it with batch_delay to wait a certain period of time after downloading each batch. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
             batch_delay: Delaying time (seconds) after each batch is downloaded. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
         
@@ -288,7 +300,7 @@ class Parser(ABC):
         elif isinstance(headers, Iterable) and not isinstance(headers, dict):
             if len(headers) != len(url_list):
                 self.crawler_settings.log.critical(f"The number of headers ({len(url_list)}) should be of the same length as the number of URLs ({len(headers)})")
-                raise ValueError(f"The number of headers ({len(url_list)}) should be of the same length as the number of URLs ({len(headers)})")
+                raise ValueError(f"The number of headers ({len(headers)}) should be of the same length as the number of URLs ({len(url_list)})")
             l_headers = list(headers)
 
         page_content_dict_with_thread_id = {}
@@ -328,13 +340,8 @@ class Parser(ABC):
                             ) for i in range(len(batched_url_list[j]))]
 
                         for thread in futures.as_completed(thread_pool):
-                            if thread.result() is not None:
-                                # Successful download
-                                page_content_dict_with_thread_id[thread.result()[1]] = thread.result()[0]
-                                progress_group.main_count_bar.update(task, advance=1)
-                            else:
-                                # Failed download
-                                progress_group.main_count_bar.update(task, advance=1)
+                            page_content_dict_with_thread_id[thread.result()[1]] = thread.result()[0]  # Successful -> content, Failed -> None
+                            progress_group.main_count_bar.update(task, advance=1)
                 
                     if (j + 1) * batch_num < page_num:
                         current_batch_delay = batch_delay() if callable(batch_delay) else batch_delay
@@ -358,6 +365,283 @@ class Parser(ABC):
         return page_content_list
     
 
+    # --------------------------------------------------------- #
+    # ADVANCED REQUEST METHOD: Using nodriver to get contents   #
+    # --------------------------------------------------------- #
+
+
+    # Get webpage content
+    async def __nodriver_request_page_content(
+        self, 
+        url: str, 
+        browser: Optional[nodriver.Browser]=None,
+        is_json: bool=False,
+        thread_delay: Union[None, float, Callable]=None,
+    ) -> str:
+        
+        if thread_delay is None:
+            real_thread_delay = self.crawler_settings.download_config.result_thread_delay
+        else:
+            real_thread_delay = thread_delay() if callable(thread_delay) else thread_delay
+        await asyncio.sleep(real_thread_delay)
+        
+        # If no browser exists, set up the browser                    
+        if browser is None:
+            # Display a progress bar if and only if browser is None
+            progress = CustomProgress(has_spinner=True, transient=True)
+            progress.start()
+            task = progress.add_task(description=f'Loading browser components...', total=2)
+
+            use_browser = await set_up_nodriver_browser(
+                proxies=self.crawler_settings.download_config.result_proxies,
+                window_width=800,
+                window_height=600,
+            )
+        
+            # Replace cookies
+            await update_nodriver_browser_cookies(use_browser, self.cookies)
+        else:
+            use_browser = browser
+        if browser is None:  # Display a progress bar if and only if browser is None
+            progress.update(task, advance=1, description=f"Loading page...")
+
+        for i in range(self.crawler_settings.download_config.retry_times):
+            try:
+                if browser is None:  # Use the main tab
+                    tab = use_browser.main_tab
+                else:  # Open a new tab
+                    tab = await use_browser.get(new_tab=True)
+                status_code = []
+                def get_response_status(event):  # Get response status code
+                    if event.response.url == url:
+                        status_code.append(event.response.status)
+                tab.add_handler(nodriver.cdp.network.ResponseReceived, get_response_status)  # Add a handler to control this
+
+                await tab.get(url)
+                await tab
+                status_code = status_code[0]
+
+                if status_code == requests.status_codes.codes.ok:
+                    self.crawler_settings.log.debug(f'Successfully connected to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1}.', extra={"markup": True})
+                    if is_json:
+                        result = await tab.get_content()  # tab.select cannot deal with TOO long text!
+                        soup = BeautifulSoup(result, 'lxml')
+                        text = soup.find('pre').text
+                        content = json.dumps(json.loads(text), ensure_ascii=False)
+                    else:
+                        content = await tab.get_content()
+                    
+                    if browser is None:  # Display a progress bar if and only if browser is None
+                        progress.update(task, advance=1)
+                        progress.finish_task(task)
+                        use_browser.stop()
+                    else:
+                        await tab.close()
+                    return content
+                elif status_code == 429:
+                    self.crawler_settings.log.warning(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED at attempt {i + 1} because TOO many requests at the same time (response status code {status_code}). Retrying to connect in 1 to 2 minutes, but it is suggested to lower the number of threads or increase thread delay time and try again.', extra={"markup": True})
+                    await asyncio.sleep(60 + random.random() * 60)
+                elif 400 <= status_code < 500:
+                    self.crawler_settings.log.error(f'Connecting to [repr.url]{markup.escape(url)}[reset] FAILED because response status code is {status_code}.', extra={"markup": True})
+                    return None
+                else:
+                    self.crawler_settings.log.warning(f'Failed to connect to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1}. Response status code is {status_code}.', extra={"markup": True})
+                
+            except Exception as e:
+                self.crawler_settings.log.warning(f"Connecting to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1} FAILED because {e} Retry connecting.\n{traceback.format_exc()}",
+                                                output_msg=f"Connecting to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1} FAILED.", extra={"markup": True})
+                await asyncio.sleep(self.crawler_settings.download_config.result_fail_delay)
+
+        if browser is None:  # Only stop the browser when it is independently set up
+            use_browser.stop()
+
+        self.crawler_settings.log.error(f'FAILED to connect to [repr.url]{markup.escape(url)}[reset]', extra={"markup": True})
+        return None
+
+
+    def nodriver_request_page_content(
+        self, 
+        url: str, 
+        browser: Optional[nodriver.Browser]=None,
+        is_json: bool=False,
+        thread_delay: Union[None, float, Callable]=None,
+    ):
+        """
+        Download webpage content with nodriver.
+
+        For those sites having strong anti-crawling measures, try using this function to bypass them.
+
+        Args:
+            url (str): The URL of the page to download.
+            browser (nodriver.Browser, None): Whether to use an existing browser instance.
+            is_json (bool): Whether the result is a JSON text. Default set to False.
+            thread_delay: Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            thread_id (int, None): If it is a thread, the thread id will be displayed at the progress bar.
+        
+        Returns:
+            The HTML content of the webpage.
+        """
+
+        return nodriver.loop().run_until_complete(
+            self.__nodriver_request_page_content(
+                url=url,
+                browser=browser,
+                is_json=is_json,
+                thread_delay=thread_delay,
+            )
+        )
+
+
+    async def __nodriver_threading_request_page_content(
+        self, 
+        url_list: Iterable[str], 
+        restriction_num: Optional[int]=None, 
+        is_json: Union[bool, Iterable[bool]]=False,
+        thread_delay: Union[None, float, Callable]=None,
+        batch_num: Optional[int]=None,
+        batch_delay: Union[float, Callable]=0.0,
+    ) -> list[str]:
+
+        page_num = len(url_list)
+        if restriction_num is not None:
+            page_num = min(page_num, restriction_num)
+        l_url_list = list(url_list)
+        if isinstance(is_json, Iterable):
+            if len(is_json) != len(url_list):
+                self.crawler_settings.log.critical(f"The number of is_json ({len(is_json)}) should be of the same length as the number of URLs ({len(url_list)})")
+                raise ValueError(f"The number of is_json ({len(is_json)}) should be of the same length as the number of URLs ({len(url_list)})")
+            l_is_json = list(l_is_json)
+
+        self.crawler_settings.log.info(f"Total webpage num: {page_num}")
+        page_content_list = []
+
+        if page_num > 0:
+            if batch_num is None:
+                batch_num = page_num
+            batched_url_list = [l_url_list[k * batch_num:min((k + 1) * batch_num, page_num)] 
+                                for k in range((page_num - 1) // batch_num + 1)]
+            if isinstance(is_json, Iterable):
+                batched_is_json = [l_is_json[k * batch_num:min((k + 1) * batch_num, page_num)] 
+                                   for k in range((page_num - 1) // batch_num + 1)]
+
+            # Set up browser instance
+            browser = await set_up_nodriver_browser(
+                proxies=self.crawler_settings.download_config.result_proxies,
+                window_width=800,
+                window_height=600,
+            )
+
+            await update_nodriver_browser_cookies(browser=browser, cookies=self.cookies)
+            
+            with ProgressGroup(panel_title="Downloading [yellow]Webpages[reset]") as progress_group:
+                task = progress_group.main_count_bar.add_task("Downloading webpages:", total=page_num)
+                
+                # Define an async task function
+                async def page_task(
+                    bar: CustomProgress,
+                    task,
+                    url: str,
+                    browser: nodriver.Browser,
+                    is_json: bool,
+                    thread_delay: Union[float, Callable],
+                    sem: asyncio.Semaphore,  # Control max corountine number
+                ):
+                    async with sem:
+                        result = await self.__nodriver_request_page_content(
+                            url=url,
+                            browser=browser,
+                            is_json=is_json,
+                            thread_delay=thread_delay,
+                        )
+                        bar.update(task, advance=1)
+                        return result
+                    
+                sem = asyncio.Semaphore(self.crawler_settings.download_config.thread_num)  # Max coroutine number
+
+                for j in range(len(batched_url_list)):
+                    results = await asyncio.gather(*[
+                        asyncio.create_task(
+                            page_task(
+                                bar=progress_group.main_count_bar,
+                                task=task,
+                                url=batched_url_list[j][i],
+                                browser=browser,
+                                is_json=is_json if not isinstance(is_json, Iterable) else batched_is_json[j][i],
+                                thread_delay=thread_delay,
+                                sem=sem,
+                            )
+                        )
+                    for i in range(len(batched_url_list[j]))])
+
+                    for result in results:
+                        page_content_list.append(result)
+                
+                    if (j + 1) * batch_num < page_num:
+                        current_batch_delay = batch_delay() if callable(batch_delay) else batch_delay
+                        restart_time = datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(seconds=current_batch_delay), '%H:%M:%S')
+                        self.crawler_settings.log.info(f"A batch of {len(batched_url_list[j])} {'page' if len(batched_url_list) <= 1 else 'pages'} has been downloaded. Waiting {current_batch_delay} {'second' if current_batch_delay <= 1 else 'seconds'} before resuming at {restart_time}.")
+
+                        # Update progress bar to pausing
+                        progress_group.main_count_bar.update(task, description=f"[yellow bold](Pausing)[reset] Downloading webpages:")
+                        await asyncio.sleep(current_batch_delay)
+                        # Reset progress bar from pausing
+                        progress_group.main_count_bar.update(task, description=f"Downloading webpages:")
+
+                # Finished normally, set progress bar to finished state
+                progress_group.main_count_bar.update(task, description=f"[green]Downloading webpages finished!")
+
+            # Stop the browser
+            browser.stop()
+
+        else:
+            self.crawler_settings.log.warning(f"No webpages are to be downloaded.")
+
+        return page_content_list
+
+
+    def nodriver_threading_request_page_content(
+        self, 
+        url_list: Iterable[str], 
+        restriction_num: Optional[int]=None, 
+        is_json: Union[bool, Iterable[bool]]=False,
+        thread_delay: Union[None, float, Callable]=None,
+        batch_num: Optional[int]=None,
+        batch_delay: Union[float, Callable]=0.0,
+    ) -> list[str]:
+        """
+        Download multiple webpage content using asynchronous coroutines (similar to threads) with nodriver.
+
+        For those sites having strong anti-crawling measures, try using this function to bypass them.
+
+        Args:
+            url_list (list[str]): The list of URLs of the page to download.
+            restriction_num (int, None): Only download the first restriction_num number of pages. Set to None (default) meaning no restrictions.
+            is_json (bool or Iterable instance): Whether the result is a JSON text. Can be a bool or a iterable object with the same length as url_list. Default set to False.
+            thread_delay (float, Callable, None): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            batch_num: Number of pages for each batch; using it with batch_delay to wait a certain period of time after downloading each batch. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            batch_delay: Delaying time (seconds) after each batch is downloaded. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+        
+        Returns:
+            A list of the HTML contents of the webpages. Its order is the same as the one of url_list.
+        """
+
+        return nodriver.loop().run_until_complete(
+            self.__nodriver_threading_request_page_content(
+                url_list=url_list,
+                restriction_num=restriction_num,
+                is_json=is_json,
+                thread_delay=thread_delay,
+                batch_num=batch_num,
+                batch_delay=batch_delay,
+            )
+        )
+
+
+    # --------------------------------------------------------- #
+    # Cloudflare related functions                              #
+    # --------------------------------------------------------- #
+
+
     # Get Cloudflare cf_clearance cookies
     async def __get_cloudflare_cookies(
         self,
@@ -365,6 +649,7 @@ class Parser(ABC):
         headless: bool=False,
         timeout: float=60,
         save_cookies_file: Optional[str]=None,
+        try_clicking: bool=False,
     ):        
         test_url = url if url is not None else self.station_url
         self.crawler_settings.log.info(f"Loading browser to get Cloudflare cookies from [repr.url]{markup.escape(test_url)}[reset].", extra={"markup": True})
@@ -383,23 +668,29 @@ class Parser(ABC):
                 progress.update(task, advance=1, description="Loading Cloudflare page and try passing it...")
 
                 tab = await browser.get(test_url)
+                await tab
                 start_timestamp = datetime.datetime.now()
                 while (datetime.datetime.now() - start_timestamp).seconds < timeout:
                     try:
-                        await tab.select('div[class="main-content"]', timeout=3)
+                        result = await tab.select('input[name="cf-turnstile-response"]', timeout=3)
+                        if result is None:
+                            break
+                        if try_clicking:
+                            await tab.verify_cf(flash=True)
                     except:
                         break
                 try:
-                    await tab.select('div[class="main-content"]', timeout=1)
-                    self.crawler_settings.log.error("Failed to pass Cloudflare verification.")
-                    return
+                    result = await tab.select('input[name="cf-turnstile-response"]', timeout=1)
+                    if result is not None:
+                        self.crawler_settings.log.error("Failed to pass the Cloudflare verification.")
+                        return
                 except:
                     pass
                 
                 progress.update(task, advance=1, description="[green]Cloudflare page successfully passed!")
                 progress.finish_task(task)
             except Exception as e:
-                output_msg_base = f"Failed to get Cloudflare cookies"
+                output_msg_base = f"Failed to get the Cloudflare cookies"
                 self.crawler_settings.log.error(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}")
                 progress.finish_task(task)
                 return
@@ -417,7 +708,7 @@ class Parser(ABC):
                 self.crawler_settings.log.warning(f"User agent is unchanged! It might be because download_config.headers is a function. Your cookies may not work.")
 
             cookies_nodriver = await browser.cookies.get_all()
-            self.cookies = Cookies.create_by(cookies_nodriver)
+            self.cookies = Cookies(cookies_nodriver)
             self.crawler_settings.log.info("Cookies have been replaced. You can use Parser.cookies to extract it. ATTENTION: The cookies only work with certain user agent and IP address in a certain time.")
 
             if save_cookies_file is not None:
@@ -436,14 +727,17 @@ class Parser(ABC):
         headless: bool=False,
         timeout: float=60,
         save_cookies_file: Optional[str]=None,
+        try_clicking: bool=False,
     ):
         """
         Bypass Cloudflare check and get its cookies.
 
-        Parameters:
+        Args:
             url (str): Get Cloudflare cookies using this URL. Set to None (default) will use the station_url in this class.
             headless (bool): Whether to display a browser window. Recommend setting to True in case you need to manually bypass Cloudflare.
+            save_cookies_file (str, None): Path to save the new cookies. Default set to :py:data:`None`, meaning not saving cookies.
             timeout (float): Try to finish Cloudflare test in timeout seconds.
+            try_clicking (bool): Try to repeatedly click the verification box. MAY CAUSE THE WEBSITE TO GET STUCK IN THE VERIFICATION PAGE.
         """
 
         nodriver.loop().run_until_complete(
@@ -452,12 +746,36 @@ class Parser(ABC):
                 headless=headless,
                 timeout=timeout,
                 save_cookies_file=save_cookies_file,
+                try_clicking=try_clicking,
             )
         )
 
 
 
 class KeywordParser(Parser):
+    """
+    A Parser for fetching result from keyword searching.
+
+    Args:
+        station_url (str): The URL of the main page of a website.
+
+            + This parameter works when several websites use the same structure. For example, https://yande.re/ and https://konachan.com/ both use Moebooru to build their websites, and this parameter must be filled to deal with these sites respectively.
+            + For websites like https://www.pixiv.net/, as no other website uses its structure, this parameter has already been initialized and do not need to be filled.
+
+        crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
+        standard_keyword_string (str): Query keyword string using standard syntax. Refer to the documentation for detailed instructions.
+        keyword_string (str, None): If you want to directly specify the keywords used in searching, set ``keyword_string`` to a custom non-empty string. It will OVERWRITE ``standard_keyword_string``.
+
+            + For example, set ``keyword_string`` to ``"kuon_(utawarerumono) rating:safe"`` in DanbooruKeywordParser means searching directly with this string in Danbooru, and its standard keyword string equivalent is ``"kuon_(utawarerumono) AND rating:safe"``.
+
+        cookies (image_crawler_utils.Cookies, list, dict, str, None): Cookies used in loading websites.
+
+            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`..
+                + :py:data:`None` means no cookies and works the same as ``Cookies()``.
+                + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
+
+        accept_empty (bool): If set to :py:data:`False` (default), when both ``standard_keyword_string`` and ``keyword_string`` is an empty string (like '' or '  '), a critical error will be thrown. If set to :py:data:`True`, no error will be thrown and the parameters are accepted.
+    """
 
     def __init__(
         self,
@@ -468,21 +786,6 @@ class KeywordParser(Parser):
         cookies: Optional[Union[Cookies, list, dict, str]]=Cookies(),
         accept_empty: bool=False,
     ):
-        """
-        A Parser for keyword conditions.
-
-        Parameters:
-            station_url (str): URL of the main station of the Parser.
-            crawler_settings (image_crawler_utils.CrawlerSettings): Crawler settings for this parser.
-            standard_keyword_string (str): A keyword string using standard syntax.
-            keyword_string (str, optional): Specify the keyword string yourself. You can write functions to generate them from the keyword tree afterwards.
-            cookies (Cookies, list, dict, str or None): Cookies used in loading websites.
-            accept_empty (bool): Accept empty keywords.
-
-        Attributes:
-            display_all_configs(): Display all configs of parser.
-            generate_standard_keyword_string(): Generate a standard keyword string. Default is using the keyword tree in this class.
-        """
 
         super().__init__(
             station_url=station_url,
@@ -509,8 +812,9 @@ class KeywordParser(Parser):
     @abstractmethod
     def run(self) -> list[ImageInfo]:
         """
-        MUST BE OVERRIDEN.
-        Generate a list of ImageInfo, containing image urls, names and infos.
+        Generate a list of ImageInfo, containing image urls, names and infos by crawling the website.
+
+        MUST BE OVERRIDDEN if inherited from Parser or KeywordParser class.
         """
         raise NotImplemented
 
@@ -530,14 +834,14 @@ class KeywordParser(Parser):
         # Basic info
         print('\nBasic Info:')
         try:
-            print(f"  - Station URL: [repr.url]{markup.escape(self.station_url)}[reset]")
-            print(f"  - Standard keyword string: {self.standard_keyword_string}")
-            print(f"  - Keyword tree: {self.keyword_tree.list_struct()}")
-            print(f"  - Keyword string: {self.keyword_string}")
+            print(f"  + Station URL: [repr.url]{markup.escape(self.station_url)}[reset]")
+            print(f"  + Standard keyword string: {self.standard_keyword_string}")
+            print(f"  + Keyword tree: {self.keyword_tree.list_struct()}")
+            print(f"  + Keyword string: {self.keyword_string}")
             if self.cookies.is_none():                
-                print(f"  - Cookies: None")
+                print(f"  + Cookies: None")
             else:
-                print(f"  - Cookies:")
+                print(f"  + Cookies:")
                 print(self.cookies.cookies_selenium)
         except Exception as e:
             print(f"Basic Info missing because {e}!\n{traceback.format_exc()}", "error")
@@ -548,7 +852,7 @@ class KeywordParser(Parser):
         for varname in self.__init__.__code__.co_varnames:
             if varname not in KeywordParser.__init__.__code__.co_varnames:
                 if getattr(self, varname, None) is not None:
-                    print(f"  - {varname}: {getattr(self, varname)}")
+                    print(f"  + {varname}: {getattr(self, varname)}")
 
         print('')
         print("CrawlerSettings used:")
@@ -565,10 +869,13 @@ class KeywordParser(Parser):
     ):
         """
         Generate a standard keyword string.
+
         Generated result may not be the same from the standard_keyword_string input.
         
-        Parameters:
-            keyword_tree: generate a standard keyword string from this keyword tree, or using the keyword tree already in this class.
+        Args:
+            keyword_tree: The KeywordLogicTree that a standard keyword string will be built from. Set to :py:data:`None` (default) will use the KeywordLogicTree generated from the ``standard_keyword_string`` parameter.
+
+                + **ATTENTION:** When set to :py:data:`None`, the standard keyword string may not be absolutely same as ``standard_keyword_string``.
 
         Returns:
             A standard keyword string.

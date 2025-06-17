@@ -9,7 +9,7 @@ from rich import markup
 import rich.default_styles
 from rich.logging import RichHandler
 
-from image_crawler_utils.configs import DebugConfig
+from .configs import DebugConfig
 
 
 
@@ -47,16 +47,16 @@ def print_logging_msg(
     Print time and message according to its logging level.
     If debug_config is used and the logging level is not allowed to show, the message will not be output.
     
-    Parameters:
+    Args:
         level (str): Level of messages.
             - Should be one of "debug", "info", "warning", "error", "critical".
             - Set it to other string or leave it blank will always output msg string without any prefix.
         msg (str): The message string to output.
         debug_config (image_crawler_utils.configs.DebugConfig): DebugConfig that controls output level. Default set to debug-level (output all).
-        exc_info: Please refer to the `rich` document.
-        stack_info: Please refer to the `rich` document.
-        stacklevel: Please refer to the `rich` document.
-        extra: Please refer to the `rich` document.
+        exc_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+        stack_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+        stacklevel: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+        extra: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
     """
     
     if level.lower() == 'debug':
@@ -82,6 +82,17 @@ def print_logging_msg(
 
 
 class Log:
+    """
+    Class provided for logging messages onto the console and into the file.
+
+    Args:
+        log_file (str): Output name for the logging file. NO SUFFIX APPENDED. Set to None (Default) is not to output any file.
+        debug_config (image_crawler_utils.configs.DebugConfig): Set the OUTPUT MESSAGE TO CONSOLE level. Default is not to output any message.
+        logging_level (str, int): Set the logging level of the LOGGING FILE.
+            - Select from: logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR and logging.CRITICAL
+        detailed_console_log (bool): When logging info to the console, always log ``msg`` (the messages logged into files) even if ``output_msg`` exists.
+    """
+
     def __init__(
             self, 
             log_file: Optional[str]=None,
@@ -89,16 +100,6 @@ class Log:
             logging_level: Union[str, int]=logging.DEBUG,
             detailed_console_log: bool=False,
         ):
-        """
-        Logging messages.
-
-        Parameters:
-            log_file (str): Output name for the logging file. NO SUFFIX APPENDED. Set to None (Default) is not to output any file.
-            debug_config (image_crawler_utils.configs.DebugConfig): Set the OUTPUT MESSAGE TO CONSOLE level. Default is not to output any message.
-            logging_level (str or int): Set the logging level of the LOGGING FILE.
-                - Select from: logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR and logging.CRITICAL
-            detailed_console_log (bool): When logging info to the console, always log `msg` (the messages logged into files) even if `output_msg` exists.
-        """
 
         self.debug_config = debug_config
         self.detailed_console_log = detailed_console_log
@@ -188,15 +189,15 @@ class Log:
             extra: Mapping[str, object] | None=None,
         ):
         """
-        Output debug messages.
+        Output debug messages of many detailed information about running the crawler, especially connections with websites.
 
-        Parameters:
+        Args:
             msg (str): Logging message.
-            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
-            exc_info: Please refer to the `rich` document.
-            stack_info: Please refer to the `rich` document.
-            stacklevel: Please refer to the `rich` document.
-            extra: Please refer to the `rich` document.
+            output_msg (str, None): Message to be output to console. Set to None will output the string in ``msg`` parameter.
+            exc_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stack_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stacklevel: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            extra: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
         """
 
         to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
@@ -223,15 +224,15 @@ class Log:
             extra: Mapping[str, object] | None=None,
         ):
         """
-        Output info messages.
+        Output info messages of basic information indicating the progress of the crawler.
 
-        Parameters:
+        Args:
             msg (str): Logging message.
-            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
-            exc_info: Please refer to the `rich` document.
-            stack_info: Please refer to the `rich` document.
-            stacklevel: Please refer to the `rich` document.
-            extra: Please refer to the `rich` document.
+            output_msg (str, None): Message to be output to console. Set to None will output the string in ``msg`` parameter.
+            exc_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stack_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stacklevel: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            extra: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
         """
         
         to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
@@ -258,15 +259,15 @@ class Log:
             extra: Mapping[str, object] | None=None,
         ):
         """
-        Output warning messages.
+        Output warning messages of errors that basically do not affect the final results, mostly connection failures with the websites.
 
-        Parameters:
+        Args:
             msg (str): Logging message.
-            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
-            exc_info: Please refer to the `rich` document.
-            stack_info: Please refer to the `rich` document.
-            stacklevel: Please refer to the `rich` document.
-            extra: Please refer to the `rich` document.
+            output_msg (str, None): Message to be output to console. Set to None will output the string in ``msg`` parameter.
+            exc_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stack_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stacklevel: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            extra: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
         """
         
         to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
@@ -293,15 +294,15 @@ class Log:
             extra: Mapping[str, object] | None=None,
         ):
         """
-        Output error messages.
+        Output error messages of errors that may affect the final results but do not interrupt the crawler.
 
-        Parameters:
+        Args:
             msg (str): Logging message.
-            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
-            exc_info: Please refer to the `rich` document.
-            stack_info: Please refer to the `rich` document.
-            stacklevel: Please refer to the `rich` document.
-            extra: Please refer to the `rich` document.
+            output_msg (str, None): Message to be output to console. Set to None will output the string in ``msg`` parameter.
+            exc_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stack_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stacklevel: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            extra: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
         """
         
         to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg
@@ -328,15 +329,15 @@ class Log:
             extra: Mapping[str, object] | None=None,
         ):
         """
-        Output critical messages.
+        Output critical messages of errors that interrupt the crawler. Usually a Python error will be raised when critical errors happen.
 
-        Parameters:
+        Args:
             msg (str): Logging message.
-            output_msg (str or None): Message to be output to console. Set to None will output the string in `msg` parameter.
-            exc_info: Please refer to the `rich` document.
-            stack_info: Please refer to the `rich` document.
-            stacklevel: Please refer to the `rich` document.
-            extra: Please refer to the `rich` document.
+            output_msg (str, None): Message to be output to console. Set to None will output the string in ``msg`` parameter.
+            exc_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stack_info: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            stacklevel: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
+            extra: Please refer to the :py:mod:`logging` and :py:mod:`rich.logging` documentation.
         """
         
         to_file_msg = markup.render(self.__escape_style(msg)) if extra is not None and "markup" in extra.keys() and extra["markup"] == True else msg

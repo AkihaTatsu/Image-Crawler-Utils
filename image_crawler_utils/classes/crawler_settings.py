@@ -12,14 +12,49 @@ from rich import print, markup
 import nodriver
 import asyncio
 
-from image_crawler_utils.configs import DebugConfig, CapacityCountConfig, DownloadConfig
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import CustomProgress
-from image_crawler_utils.utils import check_dir, Empty, set_up_nodriver_browser
+from ..configs import DebugConfig, CapacityCountConfig, DownloadConfig
+from ..log import Log
+from ..progress_bar import CustomProgress
+from ..utils import check_dir, Empty, set_up_nodriver_browser
 
 
 
 class CrawlerSettings:
+    """
+    A general framework of settings for running a crawler.
+
+    Args:
+        capacity_count_config (image_crawler_utils.configs.CapacityCountConfig, None): Contains configs that restricts downloading numbers and capacity.
+
+            + If this parameter is used, the ``image_num``, ``capacity`` and ``page_num`` parameters will be omitted.
+
+        download_config (image_crawler_utils.configs.DownloadConfig, None): Contains configs about parameters in downloading.
+        
+            + If this parameter is used, the ``headers``, ``proxies``, ``thread_delay``, ``fail_delay``, ``randomize_delay``, ``thread_num``, ``timeout``, ``max_download_time``, ``retry_time`` and ``overwrite_images`` parameters will be omitted.
+
+        debug_config (image_crawler_utils.configs.DebugConfig, None): Contains configs that define which types of messages are shown on the console.
+
+        image_num (int, None): Number of images to be parsed / downloaded in total; None means no restriction.
+        capacity (float, None): Total size of images (MB); None means no restriction.
+        page_num (int, None): Number of gallery pages to detect images in total; None means no restriction.
+
+        headers (dict, Callable, None): Headers settings. Can be a function (should return a dict), a dict or nothing. If it is a function, it will be called at every usage.
+        proxies (dict, Callable, None): Proxy settings. Can be a function (should return a dict), a dict or nothing. If it is a function, it will be called at every usage.
+        thread_delay (float): Waiting time (s) after thread start.
+        fail_delay (float): Waiting time (s) after failing.
+        randomize_delay (bool): Randomize delay time between 0 and delay_time.
+        thread_num (int): Downloading thread num.
+        timeout (float, None): Timeout for requests. Set to None means no timeout.
+        max_download_time (float, None): Maximum download time for a image. Set to None means no timeout.
+        retry_times (int): Times of retrying to download.
+        overwrite_images (bool): Overwrite existing images.
+
+        detailed_console_log (bool): Logging detailed information onto the console.
+            
+            + It means that when logging info to the console, always log ``msg`` (the messages logged into files) even if ``output_msg`` exists.
+
+        extra_configs (dict, None): This optional :py:class:`dict` is not used in any of the supported sites and crawling tasks, as it is reserved for developing your custom image crawler.
+    """
 
     def __init__(
         self,
@@ -47,40 +82,6 @@ class CrawlerSettings:
         # ExtraConfig
         extra_configs: Optional[dict]=None,
     ):
-        """
-        A general framework to design a custom crawler.
-
-        Parameters:
-            capacity_count_config (image_crawler_utils.configs.CapacityCountConfig, optional): Contains configs that restricts downloading numbers and capacity.
-            download_config (image_crawler_utils.configs.DownloadConfig, optional): Contains configs about parameters in downloading.
-            debug_config (image_crawler_utils.configs.DebugConfig, optional): Contains configs that define which types of messages are shown on the console.
-
-            image_num (int, optional): Number of images to be parsed / downloaded in total; None means no restriction.
-            capacity (float, optional): Total size of images (MB); None means no restriction.
-            page_num (int, optional): Number of gallery pages to detect images in total; None means no restriction.
-
-            headers (dict or function, optional): Headers settings. Can be a function (should return a dict), a dict or nothing. If it is a function, it will be called at every usage.
-            proxies (dict or function, optional): Proxy settings. Can be a function (should return a dict), a dict or nothing. If it is a function, it will be called at every usage.
-            thread_delay (float): Waiting time (s) after thread start.
-            fail_delay (float): Waiting time (s) after failing.
-            randomize_delay (bool): Randomize delay time between 0 and delay_time.
-            thread_num (int): Downloading thread num.
-            timeout (float, optional): Timeout for requests. Set to None means no timeout.
-            max_download_time (float, optional): Maximum download time for a image. Set to None means no timeout.
-            retry_times (int): Times of retrying to download.
-            overwrite_images (bool): Overwrite existing images.
-
-            detailed_console_log (bool): When logging info to the console, always log `msg` (the messages logged into files) even if `output_msg` exists.
-
-            extra_configs (dict, optional): A dict of custom configs.
-
-        Attributes:
-            set_logging_file(): Adding logging to file with logging level (default logging.DEBUG).
-            dill_base64_sha256_data(): Generate dill-pickled byte data of current crawler settings, its base_64 string, and the sha245 processed base_64 string.
-            display_all_configs(): Display all configs of crawler settings.
-            connectivity_test(): Test the connectivity of a URL.
-            browser_test(): Test whether untected_chromeriver works.
-        """
 
         self.capacity_count_config = capacity_count_config if not isinstance(capacity_count_config, Empty) else CapacityCountConfig(
             image_num=image_num,
@@ -120,15 +121,21 @@ class CrawlerSettings:
         logging_level: Union[str, int]=logging.DEBUG,
     ):
         """
-        Set logging to file.
-        PAY ATTENTION: You cannot add logging to file info when creatiing a class. Logging to file info is only available using this function.
+        Set the file to be logged into.
 
-        Parameters:
+        It is recommended to add a logging file when running the crawler, as the message displayed on the console is simplified and usually not complete.
+
+        PAY ATTENTION: You cannot set logging files when creatiing a class. Setting logging files is controlled by this function.
+
+        Args:
             log_file (str): Output name for the logging file. Suffix (.json) is optional. Set to None (Default) is not to output any file.
-            logging_level (int): Set the logging level of the LOGGING FILE. Select from: logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR and logging.CRITICAL .
+            logging_level (int): Set the logging level of the LOGGING FILE. Select from: :py:data:`logging.DEBUG`, :py:data:`logging.INFO`, :py:data:`logging.WARNING`, :py:data:`logging.ERROR` and :py:data:`logging.CRITICAL` (import :py:mod:`logging` library first, or use the word string directly).
+            
+                + **ATTENTION**: It is indepedent from the level of logging onto the console!
+                    + The latter is controlled by the ``debug_config`` parameter, and this parameter in turn does not affect logging into files.
 
         Returns:
-            The changed crawler settings itself.
+            The changed CrawlerSettings itself.
         """
 
         self.log = Log(
@@ -145,9 +152,7 @@ class CrawlerSettings:
         Return the serialized bytes of current CrawlerSettings, base64 encoded str of the bytes, and sha256 str of the bytes.
 
         Returns:
-            A dict like {"bytes": dill.dumps() bytes, 
-                         "base64": base64 encoding of the dill.dumps() bytes, 
-                         "sha256": sha256 encoding of the base64 code}
+            A dict like {\"bytes\": dill.dumps() bytes, \"base64\": base64 encoding of the dill.dumps() bytes, \"sha256\": sha256 encoding of the base64 code}
         """
 
         dumped_bytes = dill.dumps(self)
@@ -161,6 +166,7 @@ class CrawlerSettings:
     def display_all_configs(self):
         """
         Display all config info.
+
         Dataclasses will be displayed in a neater way.
         """
         
@@ -173,7 +179,7 @@ class CrawlerSettings:
             print('\n' + type(config).__name__ + ':')
             config_dict = dataclasses.asdict(config)
             for key, value in config_dict.items():
-                print('  - ' + str(key) + ': ' + str(value))
+                print('  + ' + str(key) + ': ' + str(value))
                 
         if self.extra_configs is not None:
             for var_name, config in self.extra_configs.items():
@@ -183,7 +189,7 @@ class CrawlerSettings:
                     # Dataclasses use neater print
                     config_dict = dataclasses.asdict(config)
                     for key, value in config_dict.keys():
-                        print('  - ' + str(key) + ': ' + str(value))
+                        print('  + ' + str(key) + ': ' + str(value))
                 else:
                     # Traditional print
                     try:
@@ -194,13 +200,13 @@ class CrawlerSettings:
         
         ##### Logging info
         print('\nLogging Info:')
-        print('  - ' + type(self.log.debug_config).__name__ + ' (Logging to console):')
+        print('  + ' + type(self.log.debug_config).__name__ + ' (Logging to console):')
         config_dict = dataclasses.asdict(self.log.debug_config)
         for key, value in config_dict.items():
-            print('    - ' + str(key) + ': ' + str(value))
+            print('    + ' + str(key) + ': ' + str(value))
         # Have logging file info
         if self.log.logging_file_handler():
-            print(f'  - Logging file: [repr.filename]{markup.escape(self.log.logging_file_path())}[reset]')
+            print(f'  + Logging file: [repr.filename]{markup.escape(self.log.logging_file_path())}[reset]')
             
         print('')
         print("========== Crawler Settings Ending ==========")
@@ -213,13 +219,14 @@ class CrawlerSettings:
     ):
         """
         Test connectivity of internet.
+
         Using config in download_config.
 
-        Parameters:
+        Args:
             url (str): Test connectivity using this URL.
 
         Returns:
-            A bool. Successful connection returns True, in other cases returns False.
+            A bool. Successful connection returns :py:data:`True`, in other cases returns :py:data:`False`.
         """
 
         self.log.info(f"Testing connectivity using url [repr.url]{markup.escape(url)}[reset] ...", extra={"markup": True})
@@ -269,7 +276,7 @@ class CrawlerSettings:
             
             try:
                 tab = await browser.get(url)
-                await tab.sleep()
+                await tab
                 self.log.info(f'Webpage is successfully loaded.')
                 if not headless:
                     await asyncio.sleep(stay_time)
@@ -292,15 +299,19 @@ class CrawlerSettings:
     ):
         """
         Test whether browser works normally.
+
         ATTENTION: This function DO NOT check the connectivity of the URL. Use connectivity_test() instead.
 
-        Parameters:
+        Args:
             url (str): Test connectivity using this URL.
-            headless (bool): Whether to display a window when testing chromdriver. You can have a quick glimpse of whether the page is correctly loaded.
+            headless (bool): Whether not to display a window when testing chromdriver. You can have a quick glimpse of whether the page is correctly loaded.
+
+                + Set ``headless`` to :py:data:`False` will pop up the browser window to display the whole process of loading the webpage.
+
             stay_time (float): If set to not headless, the window will stay for stay_time seconds.
 
         Returns:
-            A bool. Successful connection returns True, in other cases returns False.
+            A bool. Successful connection returns :py:data:`True`, in other cases returns :py:data:`False`.
         """
         nodriver.loop().run_until_complete(
             self.__browser_test(
@@ -338,27 +349,37 @@ class CrawlerSettings:
         """
         Generate a copy of a CrawlerSettings, with (optional) parameters changed.
 
-        Parameters:
-            capacity_count_config (image_crawler_utils.configs.CapacityCountConfig, optional): Contains configs that restricts downloading numbers and capacity.
-            download_config (image_crawler_utils.configs.DownloadConfig, optional): Contains configs about parameters in downloading.
-            debug_config (image_crawler_utils.configs.DebugConfig, optional): Contains configs that define which types of messages are shown on the console.
+        Args:
+            capacity_count_config (image_crawler_utils.configs.CapacityCountConfig, None): Contains configs that restricts downloading numbers and capacity.
 
-            image_num (int, optional): Number of images to be parsed / downloaded in total; None means no restriction.
-            capacity (float, optional): Total size of images (MB); None means no restriction.
-            page_num (int, optional): Number of gallery pages to detect images in total; None means no restriction.
+                + If this parameter is used, the ``image_num``, ``capacity`` and ``page_num`` parameters will be omitted.
 
-            headers (dict or function, optional): Headers settings. Can be a function (should return a dict), a dict or nothing. If it is a function, it will be called at every usage.
-            proxies (dict or function, optional): Proxy settings. Can be a function (should return a dict), a dict or nothing. If it is a function, it will be called at every usage.
+            download_config (image_crawler_utils.configs.DownloadConfig, None): Contains configs about parameters in downloading.
+            
+                + If this parameter is used, the ``headers``, ``proxies``, ``thread_delay``, ``fail_delay``, ``randomize_delay``, ``thread_num``, ``timeout``, ``max_download_time``, ``retry_time``, ``overwrite_images`` parameters will be omitted.
+
+            debug_config (image_crawler_utils.configs.DebugConfig, None): Contains configs that define which types of messages are shown on the console.
+
+            image_num (int, None): Number of images to be parsed / downloaded in total; None means no restriction.
+            capacity (float, None): Total size of images (MB); None means no restriction.
+            page_num (int, None): Number of gallery pages to detect images in total; None means no restriction.
+
+            headers (dict, Callable, None): Headers settings. Can be a function (should return a dict), a dict or nothing. If it is a function, it will be called at every usage.
+            proxies (dict, Callable, None): Proxy settings. Can be a function (should return a dict), a dict or nothing. If it is a function, it will be called at every usage.
             thread_delay (float): Waiting time (s) after thread start.
             fail_delay (float): Waiting time (s) after failing.
             randomize_delay (bool): Randomize delay time between 0 and delay_time.
             thread_num (int): Downloading thread num.
-            timeout (float, optional): Timeout for requests. Set to None means no timeout.
-            max_download_time (float, optional): Maximum download time for a image. Set to None means no timeout.
+            timeout (float, None): Timeout for requests. Set to None means no timeout.
+            max_download_time (float, None): Maximum download time for a image. Set to None means no timeout.
             retry_times (int): Times of retrying to download.
             overwrite_images (bool): Overwrite existing images.
 
-            extra_configs (dict, optional): A list of custom configs.
+            detailed_console_log (bool): Logging detailed information onto the console.
+                
+                + It means that when logging info to the console, always log ``msg`` (the messages logged into files) even if ``output_msg`` exists.
+
+            extra_configs (dict, None): This optional :py:class:`dict` is not used in any of the supported sites and crawling tasks, as it is reserved for developing your custom image crawler.
         """
 
         if isinstance(capacity_count_config, Empty):
@@ -403,12 +424,13 @@ class CrawlerSettings:
         pkl_file: Optional[str]=None,
     ) -> Optional[tuple[str, str]]:
         """
-        Save the crawler settings in a pkl file. 
+        Save the CrawlerSettings in a pkl file.
+
         It is recommended to use the default file name, which uses the sha256 encoded string generated by dill_base64_sha256_data().
 
-        Parameters:
+        Args:
             path (str): Path to save the pkl file. Default is saving to the current path.
-            pkl_file (str, optional): Name of the pkl file. (Suffix is optional.) Default is using the sha256 encoded string generated by dill_base64_sha256_data().
+            pkl_file (str, None): Name of the pkl file. (Suffix is optional.) Default is using the sha256 encoded string generated by dill_base64_sha256_data().
 
         Returns:
             (Saved file name, Absolute path of the saved file), or None if failed.
@@ -440,11 +462,11 @@ class CrawlerSettings:
         log: Log=Log(),
     ) -> CrawlerSettings:
         """
-        Load crawler settings from .pkl file.
+        Load CrawlerSettings from .pkl file.
 
-        Parameters:
-            pkl_file (str, optional): Name of the pkl file.
-            log (crawler_utils.log.Log, optional): Logging config.
+        Args:
+            pkl_file (str, None): Name of the pkl file. Suffix (.pkl) must be included.
+            log (image_crawler_utils.log.Log, None): Logging config.
 
         Returns:
             A CrawlerSettings class loaded from pkl file, or None if failed.

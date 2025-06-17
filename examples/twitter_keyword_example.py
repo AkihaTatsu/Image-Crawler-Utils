@@ -2,7 +2,7 @@ from image_crawler_utils import Downloader
 from image_crawler_utils.stations.twitter import TwitterKeywordMediaParser, TwitterSearchSettings, get_twitter_cookies
 
 cookies = get_twitter_cookies(
-    proxies={"https": "socks5://127.0.0.1:7890"}  # If you do not use system proxies, set this manually
+    proxies={"https": "socks5://127.0.0.1:7890"}  # If you do not use system proxies, set the proxies manually.
 )
 cookies.save_to_json("Twitter_cookies.json")  # Save it to an JSON file for later use
 

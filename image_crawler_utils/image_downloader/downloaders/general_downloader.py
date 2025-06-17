@@ -6,9 +6,9 @@ from typing import Optional, Union
 from rich import markup
 
 from image_crawler_utils import Cookies
-from image_crawler_utils.configs import DownloadConfig
-from image_crawler_utils.log import Log
-from image_crawler_utils.progress_bar import ProgressGroup
+from ...configs import DownloadConfig
+from ...log import Log
+from ...progress_bar import ProgressGroup
 
 from .core_downloader import download_image
 from .pixiv_downloader import pixiv_download_image_from_url
@@ -27,9 +27,9 @@ def download_image_from_url(
     cookies: Optional[Union[Cookies, list, dict, str]]=Cookies(),
 ) -> tuple[int, int]:
     """
-    Download image from url
+    Download image from url. Automatically separate Pixiv, Twitter, etc. image URLs from normal URLs.
 
-    Parameters:
+    Args:
         url (str): The URL of the image to download.
         image_name (str): Name of image to be stored.
         download_config (image_crawler_utils.configs.DownloadConfig): Comprehensive download config.
@@ -38,15 +38,15 @@ def download_image_from_url(
         session (requests.Session): A session that may contain cookies.
         progress_group (image_crawler_utils.progress_bar.ProgressGroup): The Group of Progress bars to be displayed in.
         thread_id (int): Nth thread of image downloading.
-        cookies (crawler_utils.cookies.Cookies, str, dict or list, optional): If session parameter is empty, use cookies to create a session with cookies.
+        cookies (image_crawler_utils.Cookies, str, dict, list, None): If session parameter is empty, use cookies to create a session with cookies.
 
     Returns:
-        (float, int): (the size of the downloaded image in Bytes, thread_id)
+        (float, int): (the size of the downloaded image in bytes, thread_id)
     """
 
     if session is None:
         if not isinstance(cookies, Cookies):
-            cookies = Cookies.create_by(cookies)
+            cookies = Cookies(cookies)
         session = requests.Session()
         session.cookies.update(cookies.cookies_dict)
 

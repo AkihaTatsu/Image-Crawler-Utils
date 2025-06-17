@@ -6,7 +6,7 @@ crawler_settings = CrawlerSettings(
 )
 
 cookies = get_pixiv_cookies(
-    proxies={"https": "socks5://127.0.0.1:7890"}  # If you do not use system proxies, set this manually
+    proxies={"https": "socks5://127.0.0.1:7890"}  # If you do not use system proxies, set the proxies manually.
 )
 cookies.save_to_json("Pixiv_cookies.json")  # Save it to an JSON file for later use
 
