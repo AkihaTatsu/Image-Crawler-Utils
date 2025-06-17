@@ -44,6 +44,7 @@ intersphinx_mapping = {
 exclude_patterns = []
 
 import sys, os
+sys.path.insert(0, os.path.abspath(".."))
 sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
 sys.path.insert(0, os.path.abspath(os.path.join("..", "..", "image_crawler_utils", "stations")))
 
@@ -56,5 +57,5 @@ html_context = {
     'display_github': True,
     'github_user': 'AkihaTatsu',
     'github_repo': 'Image-Crawler-Utils',
-    'github_version': 'main/docs/',
+    'github_version': 'main/docs/source/',
 }
