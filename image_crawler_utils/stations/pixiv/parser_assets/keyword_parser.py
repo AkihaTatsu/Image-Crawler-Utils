@@ -286,7 +286,7 @@ class PixivKeywordParser(KeywordParser):
             restriction_num=self.crawler_settings.capacity_count_config.image_num, 
             session=session,
             headers=json_image_url_page_headers,
-            thread_delay=max(1.0 * self.crawler_settings.download_config.thread_num, self.crawler_settings.download_config.result_thread_delay),  # Force not to be lower than a certain threshold in case the account get suspended because of too many requests
+            thread_delay=max(0.8 * self.crawler_settings.download_config.thread_num, self.crawler_settings.download_config.result_thread_delay),  # Force not to be lower than a certain threshold in case the account get suspended because of too many requests
             batch_num=self.info_page_batch_num,
             batch_delay=self.info_page_batch_delay,
         )

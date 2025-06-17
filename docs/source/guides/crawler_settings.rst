@@ -1,5 +1,5 @@
-Guide: CrawlerSettings Class
-============================
+CrawlerSettings Class
+=====================
 
 A :class:`CrawlerSettings <image_crawler_utils.CrawlerSettings>` class contains basic information and configurations for Parsers and Downloaders. It can be imported from the :class:`image_crawler_utils` package.
 

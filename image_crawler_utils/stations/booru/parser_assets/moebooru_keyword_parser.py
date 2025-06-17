@@ -29,7 +29,7 @@ class MoebooruKeywordParser(KeywordParser):
         standard_keyword_string (str): Query keyword string using standard syntax. Refer to the documentation for detailed instructions.
         cookies (image_crawler_utils.Cookies, list, dict, str, None): Cookies used in loading websites.
 
-            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`..
+            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`.
                 + :py:data:`None` means no cookies and works the same as ``Cookies()``.
                 + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
 
@@ -304,6 +304,7 @@ class MoebooruKeywordParser(KeywordParser):
             session = requests.Session()
             session.cookies.update(self.cookies.cookies_dict)
             
+        self.crawler_settings.log.info(f'Requesting JSON-API pages...')
         page_content_list = self.threading_request_page_content(
             self.json_page_urls,
             restriction_num=self.crawler_settings.capacity_count_config.page_num, 
@@ -313,7 +314,6 @@ class MoebooruKeywordParser(KeywordParser):
         # Parsing basic info
         self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
-        parent_id_list = []
         with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
             progress = progress_group.main_count_bar
             task = progress.add_task(description="Parsing image info pages:", total=len(page_content_list))
@@ -321,16 +321,10 @@ class MoebooruKeywordParser(KeywordParser):
             for content in page_content_list:
                 image_info_dict = json.loads(content)["posts"]
                 for info in image_info_dict:
-                    new_info = {"info": info, "family_group": None}
+                    new_info = {"info": info}
 
                     # Deal with tags
                     new_info["tags"] = info["tags"].split(" ")
-
-                    # Add to image_group solving waitlist
-                    if info["has_children"] is True:
-                        parent_id_list.append(info["id"])
-                    elif info["parent_id"] is not None:
-                        parent_id_list.append(info["parent_id"])
 
                     url = None
                     image_name = None
@@ -360,8 +354,6 @@ class MoebooruKeywordParser(KeywordParser):
                             # Only source_url exists, move source url to first if original url does not exist
                             url = source_url
                             source_url = None
-
-                    backup_url = None
 
                     # Move source_url to first as long as it exists
                     if self.replace_url_with_source_level == "all":
@@ -402,7 +394,6 @@ class MoebooruKeywordParser(KeywordParser):
             
             progress.update(task, description="[green]Parsing image info pages finished!")
 
-        self.parent_id_list = list(set(parent_id_list))
         self.image_info_list = image_info_list
         return self.image_info_list
 
@@ -425,6 +416,7 @@ class MoebooruKeywordParser(KeywordParser):
             session = requests.Session()
             session.cookies.update(self.cookies.cookies_dict)
             
+        self.crawler_settings.log.info(f'Requesting gallery pages...')
         page_content_list = self.threading_request_page_content(
             self.gallery_page_urls,
             restriction_num=self.crawler_settings.capacity_count_config.page_num, 
@@ -434,7 +426,6 @@ class MoebooruKeywordParser(KeywordParser):
         # Parsing basic info
         self.crawler_settings.log.info(f'Parsing image info...')
         image_info_list = []
-        parent_id_list = []
         with ProgressGroup(panel_title="Parsing Image Info") as progress_group:
             progress = progress_group.main_count_bar
             task = progress.add_task(description="Parsing image info pages:", total=len(page_content_list))
@@ -443,7 +434,7 @@ class MoebooruKeywordParser(KeywordParser):
                 tag_dict = json.loads(re.search(r'Post.register_tags\(.*\)', content).group()[len('Post.register_tags('):-len(')')])
                 image_info_dict = [json.loads(res[len('Post.register('):-len(')')]) for res in re.findall(r'Post.register\(.*\)', content)]
                 for info in image_info_dict:
-                    new_info = {"info": info, "family_group": None}
+                    new_info = {"info": info}
 
                     # Deal with tags
                     new_info["tags"] = info["tags"].split(" ")
@@ -451,12 +442,6 @@ class MoebooruKeywordParser(KeywordParser):
                     for tag in new_info["tags"]:
                         if tag in tag_dict.keys():
                             new_info["tags_class"][tag] = tag_dict[tag]
-
-                    # Add to image_group solving waitlist
-                    if info["has_children"] is True:
-                        parent_id_list.append(info["id"])
-                    elif info["parent_id"] is not None:
-                        parent_id_list.append(info["parent_id"])
 
                     url = None
                     image_name = None
@@ -528,7 +513,6 @@ class MoebooruKeywordParser(KeywordParser):
             
             progress.update(task, description="[green]Parsing image info pages finished!")
 
-        self.parent_id_list = list(set(parent_id_list))
         self.image_info_list = image_info_list
         return self.image_info_list
     

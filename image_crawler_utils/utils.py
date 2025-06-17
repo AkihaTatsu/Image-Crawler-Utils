@@ -83,7 +83,7 @@ def check_dir(dir_path: str, log: Log=Log()) -> None:
             return
         if not os.path.exists(test_dir_path):
             os.makedirs(test_dir_path)
-            log.info(f'Path [repr.filename]{markup.escape(os.path.abspath(test_dir_path))}[reset] created.', extra={"markup": True})
+            log.info(f'Directory [repr.filename]{markup.escape(os.path.abspath(test_dir_path))}[reset] created.', extra={"markup": True})
     except Exception as e:
         output_msg_base = f'Creation of path [repr.filename]{markup.escape(os.path.abspath(test_dir_path))}[reset] FAILED'
         log.critical(f"{output_msg_base}.\n{traceback.format_exc()}", output_msg=f"{output_msg_base} because {e}", extra={"markup": True})

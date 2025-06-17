@@ -1,5 +1,5 @@
-Guide: Parser Class (DanbooruKeywordParser)
-===========================================
+Parser Class (DanbooruKeywordParser)
+====================================
 
 Basic Usage
 ~~~~~~~~~~~

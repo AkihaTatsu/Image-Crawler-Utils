@@ -40,12 +40,22 @@ For those planning to construct a custom crawler, check out the :doc:`build_a_cr
 
 .. toctree::
     :maxdepth: 2
-    :caption: Contents
+    :caption: Quick Start
 
     get_started
     guides/crawler_settings
     guides/parser_example
     guides/downloader
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Advanced Usage
+
     task_notes/index_tasks
     build_a_crawler/index_build_a_crawler
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Modules
+
     modules

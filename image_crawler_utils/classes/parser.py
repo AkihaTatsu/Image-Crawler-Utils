@@ -40,7 +40,7 @@ class Parser(ABC):
         crawler_settings (image_crawler_utils.CrawlerSettings): The CrawlerSettings used in this Parser.
         cookies (image_crawler_utils.Cookies, list, dict, str, None): Cookies used in loading websites.
 
-            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`..
+            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`.
                 + :py:data:`None` means no cookies and works the same as ``Cookies()``.
                 + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
 
@@ -770,7 +770,7 @@ class KeywordParser(Parser):
 
         cookies (image_crawler_utils.Cookies, list, dict, str, None): Cookies used in loading websites.
 
-            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`..
+            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`.
                 + :py:data:`None` means no cookies and works the same as ``Cookies()``.
                 + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
 

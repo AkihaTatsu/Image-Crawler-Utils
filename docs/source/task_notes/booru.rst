@@ -142,7 +142,7 @@ Gelbooru Tips
 
 .. seealso::
 
-    `Gelbooru's cheatsheet <https://gelbooru.com/index.php?page=help&topic=cheatsheet>`_
+    `Gelbooru's cheatsheet <https://gelbooru.com/index.php?page=wiki&s=view&id=26263>`_
         Read this page before searching in Gelbooru.
 
 About GelbooruKeywordParser
@@ -160,7 +160,7 @@ For the meaning of parameters and attributes, check out the documentation of :cl
 
 .. warning::
 
-    It is required to have ``api_key`` and ``user_id`` in order to access JSON-API pages. The values can be found at the **API Access Credentials** column of https://gelbooru.com/index.php?page=account&s=options after logging in.
+    If ``use_api`` is set to :py:data:`True`, it is required to have ``api_key`` and ``user_id`` in order to access JSON-API pages. The values can be found at the **API Access Credentials** column of https://gelbooru.com/index.php?page=account&s=options after logging in.
 
 Example Program of GelbooruKeywordParser
 ----------------------------------------
@@ -172,11 +172,21 @@ For Gelbooru, this example will download images with keyword / tag "kuon\_(utawa
 Example ImageInfo of GelbooruKeywordParser
 ------------------------------------------
 
-This example image information (Gelbooru ID 7963712) is from `this Gelbooru page <https://gelbooru.com/index.php?page=post&s=view&id=7963712>`_. Its :class:`ImageInfo <image_crawler_utils.ImageInfo>` structure in JSON is like:
+This example image information (Gelbooru ID 7963712) is from `this Gelbooru page <https://gelbooru.com/index.php?page=post&s=view&id=7963712>`_.
+
+With ``use_api`` set to :py:data:`True`, its :class:`ImageInfo <image_crawler_utils.ImageInfo>` structure in JSON is like:
 
 .. collapse:: CLICK HERE TO DISPLAY
 
-    .. literalinclude:: ../JSONs/Gelbooru 7963712.json
+    .. literalinclude:: ../JSONs/Gelbooru 7963712 use_api.json
+
+---------
+
+With ``use_api`` set to :py:data:`False`, its :class:`ImageInfo <image_crawler_utils.ImageInfo>` structure in JSON is like:
+
+.. collapse:: CLICK HERE TO DISPLAY
+
+    .. literalinclude:: ../JSONs/Gelbooru 7963712 gallery.json
 
 ---------
 

@@ -1,5 +1,5 @@
-Guide: Downloader Class
-=======================
+Downloader Class
+================
 
 A :class:`Downloader <image_crawler_utils.Downloader>` will download images with information from the list of ImageInfo.
 

@@ -28,7 +28,7 @@ class SafebooruKeywordParser(KeywordParser):
         standard_keyword_string (str): Query keyword string using standard syntax. Refer to the documentation for detailed instructions.
         cookies (image_crawler_utils.Cookies, list, dict, str, None): Cookies used in loading websites.
 
-            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`..
+            + Can be one of :class:`image_crawler_utils.Cookies`, :py:class:`list`, :py:class:`dict`, :py:class:`str` or :py:data:`None`.
                 + :py:data:`None` means no cookies and works the same as ``Cookies()``.
                 + Leave this parameter blank works the same as :py:data:`None` / ``Cookies()``.
 
@@ -220,7 +220,7 @@ class SafebooruKeywordParser(KeywordParser):
         return self.last_json_page_num
     
 
-    # Get Danbooru API json page URLs
+    # Get Booru API json page URLs
     def get_json_page_urls(self) -> list[str]:
         # Attention: Gelbooru page num starts from 0 (0, 1, 2, ...)
         # self.last_json_page_num = 3 means page num is (0, 1, 2)
@@ -241,6 +241,7 @@ class SafebooruKeywordParser(KeywordParser):
             session = requests.Session()
             session.cookies.update(self.cookies.cookies_dict)
             
+        self.crawler_settings.log.info(f'Requesting JSON-API pages...')
         page_content_list = self.threading_request_page_content(
             self.json_page_urls,
             restriction_num=self.crawler_settings.capacity_count_config.page_num, 
