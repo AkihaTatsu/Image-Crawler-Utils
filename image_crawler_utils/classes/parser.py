@@ -407,18 +407,33 @@ class Parser(ABC):
 
         for i in range(self.crawler_settings.download_config.retry_times):
             try:
-                if browser is None:  # Use the main tab
-                    tab = use_browser.main_tab
-                else:  # Open a new tab
-                    tab = await use_browser.get(new_tab=True)
                 status_code = []
-                def get_response_status(event):  # Get response status code
-                    if event.response.url == url:
-                        status_code.append(event.response.status)
-                tab.add_handler(nodriver.cdp.network.ResponseReceived, get_response_status)  # Add a handler to control this
 
-                await tab.get(url)
-                await tab
+                # Timeout func
+                async def tab_get_await():
+                    if browser is None:  # Use the main tab
+                        tab = use_browser.main_tab
+                    else:  # Open a new tab
+                        tab = await use_browser.get(new_tab=True)
+                    def get_response_status(event):  # Get response status code
+                        if event.response.url == url:
+                            status_code.append(event.response.status)
+                    tab.add_handler(nodriver.cdp.network.ResponseReceived, get_response_status)  # Add a handler to control this
+
+                    await tab.get(url)
+                    await tab
+                    return tab
+                
+                # Check timeout
+                if self.crawler_settings.download_config.timeout is None:
+                    tab = await tab_get_await()
+                else:
+                    timeout_sec = self.crawler_settings.download_config.timeout
+                    try:
+                        tab = await asyncio.wait_for(tab_get_await(), timeout=timeout_sec)
+                    except:
+                        raise TimeoutError(f"Cannot connect to {url} in {timeout_sec} {'second' if timeout_sec <= 1 else 'seconds'} with nodriver.")
+                
                 status_code = status_code[0]
 
                 if status_code == requests.status_codes.codes.ok:
@@ -475,8 +490,7 @@ class Parser(ABC):
             url (str): The URL of the page to download.
             browser (nodriver.Browser, None): Whether to use an existing browser instance.
             is_json (bool): Whether the result is a JSON text. Default set to False.
-            thread_delay: Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
-            thread_id (int, None): If it is a thread, the thread id will be displayed at the progress bar.
+            thread_delay (float, Callable, None): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
         
         Returns:
             The HTML content of the webpage.
@@ -517,22 +531,17 @@ class Parser(ABC):
 
         if page_num > 0:
             if batch_num is None:
-                batch_num = page_num
+                batch_num = min(page_num, 500)
+                batch_delay = 0.0
+                silent_batch = True  # Only reload browsers, no delaying.
+            else:
+                silent_batch = False
             batched_url_list = [l_url_list[k * batch_num:min((k + 1) * batch_num, page_num)] 
                                 for k in range((page_num - 1) // batch_num + 1)]
             if isinstance(is_json, Iterable):
                 batched_is_json = [l_is_json[k * batch_num:min((k + 1) * batch_num, page_num)] 
                                    for k in range((page_num - 1) // batch_num + 1)]
 
-            # Set up browser instance
-            browser = await set_up_nodriver_browser(
-                proxies=self.crawler_settings.download_config.result_proxies,
-                window_width=800,
-                window_height=600,
-            )
-
-            await update_nodriver_browser_cookies(browser=browser, cookies=self.cookies)
-            
             with ProgressGroup(panel_title="Downloading [yellow]Webpages[reset]") as progress_group:
                 task = progress_group.main_count_bar.add_task("Downloading webpages:", total=page_num)
                 
@@ -559,6 +568,18 @@ class Parser(ABC):
                 sem = asyncio.Semaphore(self.crawler_settings.download_config.thread_num)  # Max coroutine number
 
                 for j in range(len(batched_url_list)):
+                    
+                    # Set up browser instance for every batch
+                    browser = await set_up_nodriver_browser(
+                        proxies=self.crawler_settings.download_config.result_proxies,
+                        window_width=800,
+                        window_height=600,
+                    )
+
+                    await update_nodriver_browser_cookies(browser=browser, cookies=self.cookies)
+            
+                    self.crawler_settings.log.debug("Browser components loaded.")
+
                     results = await asyncio.gather(*[
                         asyncio.create_task(
                             page_task(
@@ -579,19 +600,23 @@ class Parser(ABC):
                     if (j + 1) * batch_num < page_num:
                         current_batch_delay = batch_delay() if callable(batch_delay) else batch_delay
                         restart_time = datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(seconds=current_batch_delay), '%H:%M:%S')
-                        self.crawler_settings.log.info(f"A batch of {len(batched_url_list[j])} {'page' if len(batched_url_list) <= 1 else 'pages'} has been downloaded. Waiting {current_batch_delay} {'second' if current_batch_delay <= 1 else 'seconds'} before resuming at {restart_time}.")
 
-                        # Update progress bar to pausing
-                        progress_group.main_count_bar.update(task, description=f"[yellow bold](Pausing)[reset] Downloading webpages:")
-                        await asyncio.sleep(current_batch_delay)
-                        # Reset progress bar from pausing
-                        progress_group.main_count_bar.update(task, description=f"Downloading webpages:")
+                        if not silent_batch:
+                            self.crawler_settings.log.info(f"A batch of {len(batched_url_list[j])} {'page' if len(batched_url_list) <= 1 else 'pages'} has been downloaded. Waiting {current_batch_delay} {'second' if current_batch_delay <= 1 else 'seconds'} before resuming at {restart_time}.")
+
+                            # Update progress bar to pausing
+                            progress_group.main_count_bar.update(task, description=f"[yellow bold](Pausing)[reset] Downloading webpages:")
+                            await asyncio.sleep(current_batch_delay)
+                            # Reset progress bar from pausing
+                            progress_group.main_count_bar.update(task, description=f"Downloading webpages:")
+                        
+                    # Stop the browser
+                    browser.stop()
+
+                    self.crawler_settings.log.debug("Browser components stopped.")
 
                 # Finished normally, set progress bar to finished state
                 progress_group.main_count_bar.update(task, description=f"[green]Downloading webpages finished!")
-
-            # Stop the browser
-            browser.stop()
 
         else:
             self.crawler_settings.log.warning(f"No webpages are to be downloaded.")

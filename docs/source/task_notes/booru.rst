@@ -74,7 +74,7 @@ Currently supported Moebooru websites are listed below.
 
 .. important::
 
-    konachan.com sometimes has a Cloudflare protection. Set `has_cloudflare` to `True` in MoebooruKeywordParser and do a manual clicking when Cloudflare page is displayed.
+    konachan.com sometimes has a Cloudflare protection. Set ``has_cloudflare`` to :py:data:`True` in MoebooruKeywordParser and do a manual clicking when Cloudflare page is displayed.
 
     If you got stuck in the Cloudflare checking page, try changing an IP address (with a proxy) or switch to another environment to access.
 
