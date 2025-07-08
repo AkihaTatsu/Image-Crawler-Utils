@@ -20,7 +20,7 @@ from image_crawler_utils import Cookies, update_nodriver_browser_cookies
 from image_crawler_utils.keyword import KeywordLogicTree, construct_keyword_tree
 from image_crawler_utils.log import Log
 from image_crawler_utils.progress_bar import CustomProgress, ProgressGroup
-from image_crawler_utils.utils import check_dir, Empty, set_up_nodriver_browser
+from image_crawler_utils.utils import check_dir, Empty, set_up_nodriver_browser, silent_deconstruct_browser
 
 from .crawler_settings import CrawlerSettings
 from .image_info import ImageInfo
@@ -514,6 +514,7 @@ class Parser(ABC):
         thread_delay: Union[None, float, Callable]=None,
         batch_num: Optional[int]=None,
         batch_delay: Union[float, Callable]=0.0,
+        deconstruct_browser: bool=False,
     ) -> list[str]:
 
         page_num = len(url_list)
@@ -615,6 +616,10 @@ class Parser(ABC):
 
                     self.crawler_settings.log.debug("Browser components stopped.")
 
+                    # If deonstruct_browser=True, clear caches
+                    if deconstruct_browser:
+                        silent_deconstruct_browser(log=self.crawler_settings.log)
+
                 # Finished normally, set progress bar to finished state
                 progress_group.main_count_bar.update(task, description=f"[green]Downloading webpages finished!")
 
@@ -632,6 +637,7 @@ class Parser(ABC):
         thread_delay: Union[None, float, Callable]=None,
         batch_num: Optional[int]=None,
         batch_delay: Union[float, Callable]=0.0,
+        deconstruct_browser: bool=False
     ) -> list[str]:
         """
         Download multiple webpage content using asynchronous coroutines (similar to threads) with nodriver.
@@ -643,8 +649,9 @@ class Parser(ABC):
             restriction_num (int, None): Only download the first restriction_num number of pages. Set to None (default) meaning no restrictions.
             is_json (bool or Iterable instance): Whether the result is a JSON text. Can be a bool or a iterable object with the same length as url_list. Default set to False.
             thread_delay (float, Callable, None): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
-            batch_num: Number of pages for each batch; using it with batch_delay to wait a certain period of time after downloading each batch. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
-            batch_delay: Delaying time (seconds) after each batch is downloaded. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            batch_num (int): Number of pages for each batch; using it with batch_delay to wait a certain period of time after downloading each batch. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            batch_delay (float, Callable): Delaying time (seconds) after each batch is downloaded. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            deconstruct_browser (int): Whether to deconstruct all instances and clear caches upon finishing. Can improve performances in restricted environments.
         
         Returns:
             A list of the HTML contents of the webpages. Its order is the same as the one of url_list.
@@ -658,6 +665,7 @@ class Parser(ABC):
                 thread_delay=thread_delay,
                 batch_num=batch_num,
                 batch_delay=batch_delay,
+                deconstruct_browser=deconstruct_browser, 
             )
         )
 

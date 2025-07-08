@@ -165,6 +165,7 @@ class PixivUserParser(Parser):
             json_image_download_urls, 
             restriction_num=self.crawler_settings.capacity_count_config.image_num, 
             is_json=True,
+            deconstruct_browser=True,
             # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
         )
         
@@ -213,6 +214,7 @@ class PixivUserParser(Parser):
             json_image_download_urls, 
             restriction_num=self.crawler_settings.capacity_count_config.image_num, 
             is_json=True,
+            deconstruct_browser=True,
             # It seems that pixiv has less restrictions on crawling this type of pages, so no batch download is set.
         )
 
