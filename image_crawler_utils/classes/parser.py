@@ -377,6 +377,7 @@ class Parser(ABC):
         browser: Optional[nodriver.Browser]=None,
         is_json: bool=False,
         thread_delay: Union[None, float, Callable]=None,
+        page_stay_time: Optional[float]=None,
     ) -> str:
         
         if thread_delay is None:
@@ -398,8 +399,12 @@ class Parser(ABC):
                 window_height=600,
             )
         
-            # Replace cookies
-            await update_nodriver_browser_cookies(use_browser, self.cookies)
+            # Replace cookies, pay attention that domain should be set from station_url if not included
+            adapted_cookies_selenium = self.cookies.cookies_selenium
+            for cookie in adapted_cookies_selenium:
+                if cookie['domain'] == '':
+                    cookie['domain'] = parse.urlparse(self.station_url).hostname
+            await update_nodriver_browser_cookies(use_browser, Cookies(adapted_cookies_selenium))
         else:
             use_browser = browser
         if browser is None:  # Display a progress bar if and only if browser is None
@@ -421,7 +426,10 @@ class Parser(ABC):
                     tab.add_handler(nodriver.cdp.network.ResponseReceived, get_response_status)  # Add a handler to control this
 
                     await tab.get(url)
-                    await tab
+                    if page_stay_time is not None:
+                        await asyncio.sleep(page_stay_time)  # Stay for a while so that the page can be fully loaded
+                    else:
+                        await tab
                     return tab
                 
                 # Check timeout
@@ -480,6 +488,7 @@ class Parser(ABC):
         browser: Optional[nodriver.Browser]=None,
         is_json: bool=False,
         thread_delay: Union[None, float, Callable]=None,
+        page_stay_time: Optional[float]=None,
     ):
         """
         Download webpage content with nodriver.
@@ -491,6 +500,7 @@ class Parser(ABC):
             browser (nodriver.Browser, None): Whether to use an existing browser instance.
             is_json (bool): Whether the result is a JSON text. Default set to False.
             thread_delay (float, Callable, None): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            page_stay_time (float, None): Force the page to stay for page_stay_time seconds so that it can be fully loaded. Default set to None meaning no restrictions in time.
         
         Returns:
             The HTML content of the webpage.
@@ -502,6 +512,7 @@ class Parser(ABC):
                 browser=browser,
                 is_json=is_json,
                 thread_delay=thread_delay,
+                page_stay_time=page_stay_time,
             )
         )
 
@@ -514,7 +525,9 @@ class Parser(ABC):
         thread_delay: Union[None, float, Callable]=None,
         batch_num: Optional[int]=None,
         batch_delay: Union[float, Callable]=0.0,
-        deconstruct_browser: bool=False,
+        headless: bool=True,
+        deconstruct_browser: bool=False, 
+        page_stay_time: Optional[float]=None, 
     ) -> list[str]:
 
         page_num = len(url_list)
@@ -555,6 +568,7 @@ class Parser(ABC):
                     is_json: bool,
                     thread_delay: Union[float, Callable],
                     sem: asyncio.Semaphore,  # Control max corountine number
+                    page_stay_time: Optional[float],
                 ):
                     async with sem:
                         result = await self.__nodriver_request_page_content(
@@ -562,6 +576,7 @@ class Parser(ABC):
                             browser=browser,
                             is_json=is_json,
                             thread_delay=thread_delay,
+                            page_stay_time=page_stay_time,
                         )
                         bar.update(task, advance=1)
                         return result
@@ -575,10 +590,16 @@ class Parser(ABC):
                         proxies=self.crawler_settings.download_config.result_proxies,
                         window_width=800,
                         window_height=600,
+                        headless=headless,
                     )
 
-                    await update_nodriver_browser_cookies(browser=browser, cookies=self.cookies)
-            
+                    # Replace cookies, pay attention that domain should be set from station_url if not included
+                    adapted_cookies_selenium = self.cookies.cookies_selenium
+                    for cookie in adapted_cookies_selenium:
+                        if cookie['domain'] == '':
+                            cookie['domain'] = parse.urlparse(self.station_url).hostname
+                    await update_nodriver_browser_cookies(browser=browser, cookies=Cookies(adapted_cookies_selenium))
+
                     self.crawler_settings.log.debug("Browser components loaded.")
 
                     results = await asyncio.gather(*[
@@ -591,6 +612,7 @@ class Parser(ABC):
                                 is_json=is_json if not isinstance(is_json, Iterable) else batched_is_json[j][i],
                                 thread_delay=thread_delay,
                                 sem=sem,
+                                page_stay_time=page_stay_time,
                             )
                         )
                     for i in range(len(batched_url_list[j]))])
@@ -637,7 +659,9 @@ class Parser(ABC):
         thread_delay: Union[None, float, Callable]=None,
         batch_num: Optional[int]=None,
         batch_delay: Union[float, Callable]=0.0,
-        deconstruct_browser: bool=False
+        headless: bool=True,
+        deconstruct_browser: bool=False,
+        page_stay_time: Optional[float]=None, 
     ) -> list[str]:
         """
         Download multiple webpage content using asynchronous coroutines (similar to threads) with nodriver.
@@ -651,7 +675,9 @@ class Parser(ABC):
             thread_delay (float, Callable, None): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
             batch_num (int): Number of pages for each batch; using it with batch_delay to wait a certain period of time after downloading each batch. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
             batch_delay (float, Callable): Delaying time (seconds) after each batch is downloaded. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
+            headless (bool): Display a browser window or not. Default set to :py:data:`True`, and setting it to :py:data:`False` is helpful for debugging and bypassing some anti-crawling measures.
             deconstruct_browser (int): Whether to deconstruct all instances and clear caches upon finishing. Can improve performances in restricted environments.
+            page_stay_time (float, None): Force the page to stay for page_stay_time seconds so that it can be fully loaded. Default set to None meaning no restrictions in time.
         
         Returns:
             A list of the HTML contents of the webpages. Its order is the same as the one of url_list.
@@ -665,7 +691,9 @@ class Parser(ABC):
                 thread_delay=thread_delay,
                 batch_num=batch_num,
                 batch_delay=batch_delay,
+                headless=headless,
                 deconstruct_browser=deconstruct_browser, 
+                page_stay_time=page_stay_time,
             )
         )
 
