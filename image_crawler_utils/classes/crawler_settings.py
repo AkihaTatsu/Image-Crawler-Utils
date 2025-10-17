@@ -73,7 +73,7 @@ class CrawlerSettings:
         fail_delay: float=3,
         randomize_delay: bool=True,
         thread_num: int=5,
-        timeout: Optional[float]=10.0,
+        timeout: Optional[float]=30.0,
         max_download_time: Optional[float]=None,
         retry_times: int=5,
         overwrite_images: bool=True,

@@ -375,6 +375,7 @@ class Parser(ABC):
         self, 
         url: str, 
         browser: Optional[nodriver.Browser]=None,
+        headless: bool=True,
         is_json: bool=False,
         thread_delay: Union[None, float, Callable]=None,
         page_stay_time: Optional[float]=None,
@@ -397,12 +398,13 @@ class Parser(ABC):
                 proxies=self.crawler_settings.download_config.result_proxies,
                 window_width=800,
                 window_height=600,
+                headless=headless,
             )
         
             # Replace cookies, pay attention that domain should be set from station_url if not included
             adapted_cookies_selenium = self.cookies.cookies_selenium
             for cookie in adapted_cookies_selenium:
-                if cookie['domain'] == '':
+                if ('domain' not in cookie.keys()) or cookie['domain'] == '':
                     cookie['domain'] = parse.urlparse(self.station_url).hostname
             await update_nodriver_browser_cookies(use_browser, Cookies(adapted_cookies_selenium))
         else:
@@ -438,11 +440,11 @@ class Parser(ABC):
                 else:
                     timeout_sec = self.crawler_settings.download_config.timeout
                     try:
-                        tab = await asyncio.wait_for(tab_get_await(), timeout=timeout_sec)
+                        tab = await asyncio.wait_for(tab_get_await(), timeout=timeout_sec + (page_stay_time if page_stay_time is not None else 0))  # Add page_stay_time to timeout
                     except:
                         raise TimeoutError(f"Cannot connect to {url} in {timeout_sec} {'second' if timeout_sec <= 1 else 'seconds'} with nodriver.")
                 
-                status_code = status_code[0]
+                status_code = status_code[0] if len(status_code) > 0 else 200  # If cannot get the status code, set it to 200
 
                 if status_code == requests.status_codes.codes.ok:
                     self.crawler_settings.log.debug(f'Successfully connected to [repr.url]{markup.escape(url)}[reset] at attempt {i + 1}.', extra={"markup": True})
@@ -486,6 +488,7 @@ class Parser(ABC):
         self, 
         url: str, 
         browser: Optional[nodriver.Browser]=None,
+        headless: bool=True,
         is_json: bool=False,
         thread_delay: Union[None, float, Callable]=None,
         page_stay_time: Optional[float]=None,
@@ -498,6 +501,7 @@ class Parser(ABC):
         Args:
             url (str): The URL of the page to download.
             browser (nodriver.Browser, None): Whether to use an existing browser instance.
+            headless (bool): Whether to set the browser in headless mode. Default set to :py:data:`True`. Only works when browser is None.
             is_json (bool): Whether the result is a JSON text. Default set to False.
             thread_delay (float, Callable, None): Delay before thread running. Default set to None. Used to deal with websites like Pixiv which has a restriction on requests in a certain period of time.
             page_stay_time (float, None): Force the page to stay for page_stay_time seconds so that it can be fully loaded. Default set to None meaning no restrictions in time.
@@ -510,6 +514,7 @@ class Parser(ABC):
             self.__nodriver_request_page_content(
                 url=url,
                 browser=browser,
+                headless=headless,
                 is_json=is_json,
                 thread_delay=thread_delay,
                 page_stay_time=page_stay_time,
@@ -596,7 +601,7 @@ class Parser(ABC):
                     # Replace cookies, pay attention that domain should be set from station_url if not included
                     adapted_cookies_selenium = self.cookies.cookies_selenium
                     for cookie in adapted_cookies_selenium:
-                        if cookie['domain'] == '':
+                        if ('domain' not in cookie.keys()) or cookie['domain'] == '':
                             cookie['domain'] = parse.urlparse(self.station_url).hostname
                     await update_nodriver_browser_cookies(browser=browser, cookies=Cookies(adapted_cookies_selenium))
 

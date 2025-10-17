@@ -107,7 +107,7 @@ def save_image_infos(
 
         return f_name, os.path.abspath(f_name)
     except Exception as e:
-        log.error(f'Failed to save the list of ImageInfo at [repr.filename]{markup.escape(os.path.abspath(f_name))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
+        log.error(f'Failed to save the list of ImageInfo at [repr.filename]{markup.escape(os.path.abspath(json_file))}[reset] because {e}\n{traceback.format_exc()}', extra={"markup": True})
         return None
 
 
